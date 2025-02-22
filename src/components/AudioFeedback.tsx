@@ -5,7 +5,7 @@ import { Card } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
 import { Mic, Square, Upload } from "lucide-react";
 import { useConversation } from "@11labs/react";
-import { SalesAnalysis, SalesStage } from "../types/sales";
+import { SalesAnalysis, SalesStage, SALES_STAGES } from "../types/sales";
 
 interface FeedbackState {
   type: "positive" | "neutral" | "negative";
