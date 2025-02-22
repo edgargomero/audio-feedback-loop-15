@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -71,10 +72,7 @@ export const AudioFeedback = () => {
 
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audio: base64Audio },
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
-        }
+        // No necesitamos enviar headers personalizados, Supabase los maneja automáticamente
       });
 
       if (error) {
