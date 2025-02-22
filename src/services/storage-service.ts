@@ -8,30 +8,13 @@ export const uploadToSupabase = async (audioBlob: Blob) => {
   try {
     const fileName = `audio_${Date.now()}.webm`;
     
-    // Verificar si el bucket existe
-    const { data: buckets } = await supabase.storage.listBuckets();
-    console.log('Buckets disponibles:', buckets);
-
-    // Asegurarnos que el bucket existe
-    const { data: bucket, error: bucketError } = await supabase.storage
-      .createBucket(BUCKET_NAME, {
-        public: false,
-        allowedMimeTypes: ['audio/webm'],
-        fileSizeLimit: 5242880, // 5MB
-      });
-
-    if (bucketError && bucketError.message !== 'Bucket already exists') {
-      console.error('Error al crear/verificar bucket:', bucketError);
-      throw bucketError;
-    }
-
-    // Intentar la subida del archivo
+    // Intentar la subida del archivo directamente
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(fileName, audioBlob, {
         cacheControl: '3600',
         contentType: 'audio/webm',
-        upsert: false
+        upsert: true // Cambiado a true para permitir sobreescribir
       });
 
     if (error) {
