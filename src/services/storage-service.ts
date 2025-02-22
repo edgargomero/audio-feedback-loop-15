@@ -1,9 +1,19 @@
 
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, BUCKET_NAME, MAKE_WEBHOOK_URL } from '../types/feedback';
+import { 
+  SUPABASE_URL, 
+  SUPABASE_SERVICE_KEY, 
+  BUCKET_NAME, 
+  MAKE_WEBHOOK_URL 
+} from '../types/feedback';
 
-// Crear cliente de Supabase con configuración mínima
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Crear cliente de Supabase usando la clave de servicio
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 export const uploadToSupabase = async (audioBlob: Blob) => {
   try {
@@ -17,8 +27,7 @@ export const uploadToSupabase = async (audioBlob: Blob) => {
     const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${fileName}`, {
       method: 'POST',
       headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
       },
       body: formData
     });
