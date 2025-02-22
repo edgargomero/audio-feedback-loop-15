@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -31,28 +32,6 @@ export const AudioFeedback = () => {
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwdmpmbXhha3V3cGhrY2RzdnplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1OTY0NDcsImV4cCI6MjAyNTE3MjQ0N30.EkyRW6CNFKhyduYjCGL6I7NvyXxKwnbgUYQYBo1oL78'
   );
 
-  const analyzeFeedback = (analysis: any) => {
-    let feedbackState: FeedbackState = {
-      type: "neutral",
-      message: "Escuchando... 👂"
-    };
-
-    // Analiza la respuesta de Make/LLM
-    if (analysis.confidence > 0.8) {
-      feedbackState.type = "positive";
-      feedbackState.message = `${analysis.recommendation} ✅`;
-    } else {
-      feedbackState.type = "neutral";
-      feedbackState.message = `${analysis.recommendation} 🤔`;
-    }
-
-    if (analysis.stage) {
-      feedbackState.stage = analysis.stage;
-    }
-
-    setFeedback(feedbackState);
-  };
-
   const processAudioChunk = async (chunk: Blob) => {
     try {
       console.log('Processing audio chunk...');
@@ -69,11 +48,14 @@ export const AudioFeedback = () => {
 
       console.log('Sending to Supabase function...');
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audio: base64Audio },
-        headers: {
-          Authorization: `Bearer ${supabase.auth.getSession()?.access_token}`
-        }
+        headers: accessToken ? {
+          Authorization: `Bearer ${accessToken}`
+        } : undefined
       });
 
       if (error) {
@@ -99,6 +81,27 @@ export const AudioFeedback = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const analyzeFeedback = (analysis: any) => {
+    let feedbackState: FeedbackState = {
+      type: "neutral",
+      message: "Escuchando... 👂"
+    };
+
+    if (analysis.confidence > 0.8) {
+      feedbackState.type = "positive";
+      feedbackState.message = `${analysis.recommendation} ✅`;
+    } else {
+      feedbackState.type = "neutral";
+      feedbackState.message = `${analysis.recommendation} 🤔`;
+    }
+
+    if (analysis.stage) {
+      feedbackState.stage = analysis.stage;
+    }
+
+    setFeedback(feedbackState);
   };
 
   const handleStartRecording = async () => {
