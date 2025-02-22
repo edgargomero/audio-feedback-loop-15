@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -56,34 +55,44 @@ export const AudioFeedback = () => {
 
   const processAudioChunk = async (chunk: Blob) => {
     try {
+      console.log('Processing audio chunk...');
+      
+      // Convertir el chunk de audio a base64
       const base64Audio = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          const base64 = (reader.result as string).split(',')[1];
+          const base64 = reader.result as string;
           resolve(base64);
         };
         reader.readAsDataURL(chunk);
       });
 
+      console.log('Sending to Supabase function...');
+
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audio: base64Audio }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
 
-      if (data.text) {
+      console.log('Received response:', data);
+
+      if (data?.text) {
         setTranscription(prev => `${prev} ${data.text}`);
       }
 
-      if (data.analysis) {
+      if (data?.analysis) {
         analyzeFeedback(data.analysis);
       }
 
     } catch (error) {
       console.error('Error processing audio:', error);
       toast({
-        title: "Error",
-        description: "Error al procesar el audio ❌",
+        title: "Error al procesar audio",
+        description: error instanceof Error ? error.message : "Error desconocido ❌",
         variant: "destructive",
       });
     }
@@ -91,19 +100,34 @@ export const AudioFeedback = () => {
 
   const handleStartRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      console.log('Requesting microphone access...');
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+      
+      console.log('Creating MediaRecorder...');
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm'
+      });
+      
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
+          console.log('Got audio chunk, size:', e.data.size);
           chunksRef.current.push(e.data);
           processAudioChunk(e.data);
         }
       };
 
       mediaRecorder.start(CHUNK_SIZE);
+      console.log('Started recording...');
+      
       setIsRecording(true);
       setFeedback({
         type: "neutral",
@@ -111,10 +135,10 @@ export const AudioFeedback = () => {
       });
 
     } catch (error) {
-      console.error("Error al acceder al micrófono:", error);
+      console.error("Error accessing microphone:", error);
       toast({
         title: "Error",
-        description: "No hay micrófono ❌",
+        description: "No se pudo acceder al micrófono ❌",
         variant: "destructive",
       });
     }

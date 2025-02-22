@@ -4,42 +4,18 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-// Procesa el audio en chunks para evitar problemas de memoria
-function processBase64Chunks(base64String: string, chunkSize = 32768) {
-  const chunks: Uint8Array[] = [];
-  let position = 0;
-  
-  while (position < base64String.length) {
-    const chunk = base64String.slice(position, position + chunkSize);
-    const binaryChunk = atob(chunk);
-    const bytes = new Uint8Array(binaryChunk.length);
-    
-    for (let i = 0; i < binaryChunk.length; i++) {
-      bytes[i] = binaryChunk.charCodeAt(i);
-    }
-    
-    chunks.push(bytes);
-    position += chunkSize;
-  }
-
-  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return result;
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, content-length',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    })
   }
 
   try {
@@ -49,16 +25,26 @@ serve(async (req) => {
       throw new Error('No audio data provided')
     }
 
-    // Procesa el audio en chunks
-    const binaryAudio = processBase64Chunks(audio)
+    console.log('Processing audio chunk...');
+
+    // Process base64 audio
+    const base64Data = audio.split(',')[1] || audio;
+    const binaryStr = atob(base64Data);
+    const bytes = new Uint8Array(binaryStr.length);
     
-    // Prepara los datos para Whisper
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+
+    console.log('Sending to Whisper API...');
+    
+    // Prepare form data for Whisper
     const formData = new FormData()
-    const blob = new Blob([binaryAudio], { type: 'audio/webm' })
+    const blob = new Blob([bytes], { type: 'audio/webm' })
     formData.append('file', blob, 'audio.webm')
     formData.append('model', 'whisper-1')
 
-    // Envía a Whisper para transcripción
+    // Send to OpenAI Whisper
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -68,39 +54,65 @@ serve(async (req) => {
     })
 
     if (!response.ok) {
-      throw new Error(`Whisper API error: ${await response.text()}`)
+      const errorText = await response.text();
+      console.error('Whisper API error:', errorText);
+      throw new Error(`Whisper API error: ${errorText}`);
     }
 
     const result = await response.json()
+    console.log('Whisper transcription:', result.text);
 
-    // Envía la transcripción a Make para análisis
-    const makeResponse = await fetch(Deno.env.get('MAKE_WEBHOOK_URL') || '', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text: result.text,
-        timestamp: new Date().toISOString(),
-      }),
-    })
+    // Send to Make webhook if URL is configured
+    const webhookUrl = Deno.env.get('MAKE_WEBHOOK_URL');
+    let analysis = null;
 
-    const analysis = await makeResponse.json()
+    if (webhookUrl) {
+      console.log('Sending to Make webhook...');
+      const makeResponse = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: result.text,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (makeResponse.ok) {
+        analysis = await makeResponse.json();
+        console.log('Make analysis:', analysis);
+      } else {
+        console.error('Make webhook error:', await makeResponse.text());
+      }
+    }
 
     return new Response(
       JSON.stringify({ 
         text: result.text,
         analysis: analysis
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
     )
 
   } catch (error) {
+    console.error('Function error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        errorDetail: error.stack 
+      }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        },
       }
     )
   }
