@@ -1,11 +1,11 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
 import { Mic, Square, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
 import { useConversation } from "@11labs/react";
 import { SalesAnalysis, SalesStage, SALES_STAGES } from "../types/sales";
+import { createClient } from '@supabase/supabase-js';
 
 interface FeedbackState {
   type: "positive" | "neutral" | "negative";
@@ -14,6 +14,9 @@ interface FeedbackState {
   analysis?: Partial<SalesAnalysis>;
 }
 
+const RECORDING_TIMEOUT = 120000; // 2 minutos en milisegundos
+const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/468699b2kb5eoh918zklajo9um4mk9ia';
+
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>({
@@ -21,6 +24,14 @@ export const AudioFeedback = () => {
     message: "Listo 👋",
   });
   const { toast } = useToast();
+  const recordingStartTimeRef = useRef<number>(0);
+  const useElevenLabsRef = useRef(true);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+  const supabase = createClient(
+    'https://vpvjfmxakuwphkcdsvze.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwdmpmbXhha3V3cGhrY2RzdnplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1OTY0NDcsImV4cCI6MjAyNTE3MjQ0N30.EkyRW6CNFKhyduYjCGL6I7NvyXxKwnbgUYQYBo1oL78'
+  );
 
   const conversation = useConversation({
     onMessage: (message) => {
@@ -59,6 +70,117 @@ export const AudioFeedback = () => {
       });
     }
   });
+
+  const uploadToSupabase = async (audioBlob: Blob) => {
+    try {
+      const fileName = `audio_${Date.now()}.webm`;
+      const { data, error } = await supabase.storage
+        .from('audio-recordings')
+        .upload(fileName, audioBlob);
+
+      if (error) throw error;
+
+      // Enviar a Make
+      const response = await fetch(MAKE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audioUrl: data?.path,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al enviar a Make');
+      }
+
+      const analysisData = await response.json();
+      analyzeFeedback(analysisData);
+
+    } catch (error) {
+      console.error('Error al procesar audio:', error);
+      toast({
+        title: "Error",
+        description: "Error al procesar el audio ❌",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const checkRecordingTime = () => {
+    if (recordingStartTimeRef.current && useElevenLabsRef.current) {
+      const currentTime = Date.now();
+      if (currentTime - recordingStartTimeRef.current >= RECORDING_TIMEOUT) {
+        useElevenLabsRef.current = false;
+        conversation.endSession();
+        toast({
+          title: "Información",
+          description: "Cambiando a almacenamiento en Supabase",
+        });
+      }
+    }
+  };
+
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm'
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
+      recordingStartTimeRef.current = Date.now();
+      useElevenLabsRef.current = true;
+
+      mediaRecorder.ondataavailable = async (e) => {
+        if (e.data.size > 0) {
+          if (useElevenLabsRef.current) {
+            // Usar ElevenLabs
+            conversation.startSession({
+              agentId: "DnScXfRTfQyBlJMBhfKb",
+            });
+          } else {
+            // Usar Supabase + Make
+            await uploadToSupabase(e.data);
+          }
+        }
+      };
+
+      const checkTimeInterval = setInterval(checkRecordingTime, 1000);
+      
+      mediaRecorder.onstop = () => {
+        clearInterval(checkTimeInterval);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start(1000);
+      setIsRecording(true);
+      setFeedback({
+        type: "neutral",
+        message: "Iniciando... 🎤",
+      });
+
+    } catch (error) {
+      console.error("Error al acceder al micrófono:", error);
+      toast({
+        title: "Error",
+        description: "No hay micrófono ❌",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      if (useElevenLabsRef.current) {
+        conversation.endSession();
+      }
+    }
+    setIsRecording(false);
+  };
 
   const analyzeSalesStage = (analysis: Partial<SalesAnalysis>) => {
     if (!analysis.stage) return;
@@ -149,33 +271,6 @@ export const AudioFeedback = () => {
     }
 
     setFeedback(feedbackState);
-  };
-
-  const handleStartRecording = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      setIsRecording(true);
-      setFeedback({
-        type: "neutral",
-        message: "Iniciando... 🎤",
-      });
-      
-      conversation.startSession({
-        agentId: "DnScXfRTfQyBlJMBhfKb",
-      });
-    } catch (error) {
-      console.error("Error al acceder al micrófono:", error);
-      toast({
-        title: "Error",
-        description: "No hay micrófono ❌",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleStopRecording = () => {
-    setIsRecording(false);
-    conversation.endSession();
   };
 
   const getFeedbackColor = (type: FeedbackState["type"]) => {
