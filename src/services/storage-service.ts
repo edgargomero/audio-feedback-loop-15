@@ -8,27 +8,29 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export const uploadToSupabase = async (audioBlob: Blob) => {
   try {
     console.log('Iniciando subida a Supabase...');
-    console.log('URL:', SUPABASE_URL);
     
     const fileName = `audio_${Date.now()}.webm`;
+    const formData = new FormData();
+    formData.append('file', audioBlob, fileName);
     
-    // Intentar subida directa sin verificar buckets
-    const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(fileName, audioBlob, {
-        contentType: 'audio/webm'
-      });
+    // Subir usando fetch directamente con FormData
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${fileName}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: formData
+    });
 
-    if (error) {
-      console.error('Error al subir archivo:', error);
-      throw error;
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Error detallado de subida:', error);
+      throw new Error(`Error al subir: ${response.status}`);
     }
 
-    // Obtener URL pública
-    const { data: { publicUrl } } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(fileName);
-
+    // Construir URL pública
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${fileName}`;
     console.log('Audio guardado exitosamente en:', publicUrl);
 
     // Enviar a Make
