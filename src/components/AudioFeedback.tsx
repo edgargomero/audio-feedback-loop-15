@@ -3,9 +3,9 @@ import { useState, useRef } from "react";
 import { Card } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
 import { useConversation } from "@11labs/react";
-import { SalesAnalysis } from "../types/sales";
 import { RecordButton } from "./audio/RecordButton";
 import { ExtraRecordButton } from "./audio/ExtraRecordButton";
+import { UploadButton } from "./audio/UploadButton";
 import { FeedbackDisplay } from "./audio/FeedbackDisplay";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
 
@@ -98,12 +98,30 @@ export const AudioFeedback = () => {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
           const audioUrl = URL.createObjectURL(audioBlob);
           
-          // Aquí podrías enviar el audioBlob al servidor o procesarlo
-          console.log("Audio grabado disponible en:", audioUrl);
+          // Aquí creamos un FormData para enviar a Make
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.mp3');
           
-          toast({
-            title: "Guardado",
-            description: "Audio grabado y listo para procesar",
+          // URL de tu webhook de Make (deberás reemplazarla con tu URL real)
+          const makeWebhookUrl = 'TU_URL_DE_MAKE';
+          
+          fetch(makeWebhookUrl, {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => {
+            toast({
+              title: "Éxito",
+              description: "Audio enviado a Make correctamente",
+            });
+          })
+          .catch(error => {
+            console.error('Error al enviar a Make:', error);
+            toast({
+              title: "Error",
+              description: "Error al enviar el audio a Make",
+              variant: "destructive",
+            });
           });
         };
 
@@ -133,22 +151,31 @@ export const AudioFeedback = () => {
 
   const handleFileUpload = async (file: File) => {
     try {
-      // Aquí podrías procesar el archivo MP3
-      console.log("Archivo MP3 recibido:", file);
+      // Crear FormData para enviar a Make
+      const formData = new FormData();
+      formData.append('audio', file);
       
-      toast({
-        title: "Archivo recibido",
-        description: `${file.name} listo para procesar`,
+      // URL de tu webhook de Make (deberás reemplazarla con tu URL real)
+      const makeWebhookUrl = 'TU_URL_DE_MAKE';
+      
+      const response = await fetch(makeWebhookUrl, {
+        method: 'POST',
+        body: formData
       });
 
-      // Aquí podrías enviar el archivo al servidor o procesarlo
-      const audioUrl = URL.createObjectURL(file);
-      console.log("Audio del archivo disponible en:", audioUrl);
+      if (response.ok) {
+        toast({
+          title: "Archivo enviado",
+          description: "Audio enviado a Make correctamente",
+        });
+      } else {
+        throw new Error('Error al enviar el archivo');
+      }
     } catch (error) {
       console.error("Error al procesar el archivo:", error);
       toast({
         title: "Error",
-        description: "Error al procesar el archivo ❌",
+        description: "Error al enviar el archivo a Make ❌",
         variant: "destructive",
       });
     }
@@ -165,8 +192,8 @@ export const AudioFeedback = () => {
           <ExtraRecordButton 
             isRecording={isRecordingExtra}
             onToggleRecording={handleExtraRecording}
-            onFileUpload={handleFileUpload}
           />
+          <UploadButton onFileUpload={handleFileUpload} />
         </div>
 
         <FeedbackDisplay 
