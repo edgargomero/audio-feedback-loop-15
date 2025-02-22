@@ -15,6 +15,7 @@ export const AudioFeedback = () => {
     type: "neutral",
     message: "Listo 👋",
   });
+  const [isConnected, setIsConnected] = useState(false);
   const { toast } = useToast();
   const analysisPendingRef = useRef(false);
 
@@ -36,6 +37,7 @@ export const AudioFeedback = () => {
     },
     onError: (error) => {
       console.error("Error en la conversación:", error);
+      setIsConnected(false);
       toast({
         title: "Error",
         description: "❌ Error de conexión",
@@ -44,6 +46,7 @@ export const AudioFeedback = () => {
     },
     onConnect: () => {
       console.log("Conexión establecida");
+      setIsConnected(true);
       setFeedback({
         type: "positive",
         message: "Conectado ✅",
@@ -51,6 +54,7 @@ export const AudioFeedback = () => {
     },
     onDisconnect: () => {
       console.log("Desconectado de ElevenLabs");
+      setIsConnected(false);
       // Intentar reconectar si hay un análisis pendiente
       if (analysisPendingRef.current) {
         handleStartRecording();
@@ -59,7 +63,7 @@ export const AudioFeedback = () => {
   });
 
   const handleRecordingComplete = async (audioBlob: Blob) => {
-    if (!conversation.isConnected && !analysisPendingRef.current) {
+    if (!isConnected && !analysisPendingRef.current) {
       // Si no está conectado, intentar reconectar
       analysisPendingRef.current = true;
       await handleStartRecording();
