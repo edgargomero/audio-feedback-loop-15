@@ -143,7 +143,7 @@ export const AudioFeedback = () => {
       });
       
       conversation.startSession({
-        agentId: "your-agent-id", // Reemplazar con el ID real del agente
+        agentId: "DnScXfRTfQyBlJMBhfKb", // Agent ID actualizado
       });
     } catch (error) {
       console.error("Error al acceder al micrófono:", error);
