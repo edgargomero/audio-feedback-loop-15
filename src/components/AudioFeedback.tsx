@@ -62,7 +62,8 @@ export const AudioFeedback = () => {
       const base64Audio = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          const base64 = reader.result as string;
+          // Extraer solo la parte base64 del data URL
+          const base64 = (reader.result as string).split(',')[1];
           resolve(base64);
         };
         reader.readAsDataURL(chunk);
@@ -71,8 +72,7 @@ export const AudioFeedback = () => {
       console.log('Sending to Supabase function...');
 
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: { audio: base64Audio },
-        // No necesitamos enviar headers personalizados, Supabase los maneja automáticamente
+        body: { audio: base64Audio }
       });
 
       if (error) {
