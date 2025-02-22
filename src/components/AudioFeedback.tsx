@@ -18,16 +18,76 @@ export const AudioFeedback = () => {
     message: "Listo para comenzar",
   });
   const { toast } = useToast();
-  const conversation = useConversation();
+  const conversation = useConversation({
+    onMessage: (message) => {
+      console.log("Mensaje recibido:", message);
+      
+      // Analizar el mensaje y actualizar el feedback
+      if (message.type === "agent_response") {
+        analyzeFeedback(message.content);
+      }
+    },
+    onError: (error) => {
+      console.error("Error en la conversación:", error);
+      toast({
+        title: "Error",
+        description: "Hubo un error en la conversación",
+        variant: "destructive",
+      });
+    },
+    onConnect: () => {
+      console.log("Conexión establecida");
+      setFeedback({
+        type: "positive",
+        message: "Conexión establecida correctamente",
+      });
+    },
+    onDisconnect: () => {
+      console.log("Desconectado");
+      setIsRecording(false);
+      setFeedback({
+        type: "neutral",
+        message: "Conversación finalizada",
+      });
+    }
+  });
+
+  const analyzeFeedback = (content: string) => {
+    // Ejemplo simple de análisis - esto se puede hacer más sofisticado
+    const lowerContent = content.toLowerCase();
+    
+    if (lowerContent.includes("bien") || lowerContent.includes("excelente")) {
+      setFeedback({
+        type: "positive",
+        message: "¡Buen progreso! Continúa así",
+      });
+    } else if (lowerContent.includes("mejorar") || lowerContent.includes("cuidado")) {
+      setFeedback({
+        type: "negative",
+        message: "Considera ajustar tu enfoque",
+      });
+    } else {
+      setFeedback({
+        type: "neutral",
+        message: content,
+      });
+    }
+  };
 
   const handleStartRecording = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
       setIsRecording(true);
+      setFeedback({
+        type: "neutral",
+        message: "Iniciando grabación...",
+      });
+      
       conversation.startSession({
         agentId: "your-agent-id", // Reemplazar con el ID real del agente
       });
     } catch (error) {
+      console.error("Error al acceder al micrófono:", error);
       toast({
         title: "Error",
         description: "No se pudo acceder al micrófono",
@@ -78,6 +138,12 @@ export const AudioFeedback = () => {
         >
           <p className="text-center font-medium">{feedback.message}</p>
         </div>
+
+        {isRecording && (
+          <div className="text-center text-sm text-gray-500">
+            Grabando... Haz clic en el botón para detener
+          </div>
+        )}
       </div>
     </Card>
   );
