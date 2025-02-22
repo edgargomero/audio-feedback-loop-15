@@ -15,7 +15,7 @@ interface FeedbackState {
   analysis?: Partial<SalesAnalysis>;
 }
 
-const RECORDING_TIMEOUT = 4000; // 2 segundos en milisegundos
+const RECORDING_TIMEOUT = 2000;
 const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/468699b2kb5eoh918zklajo9um4mk9ia';
 const SUPABASE_URL = 'https://fajhodgsoykvmdgbsrud.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhamhvZGdzb3lrdm1kZ2JzcnVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1OTY0NDcsImV4cCI6MjAyNTE3MjQ0N30.EkyRW6CNFKhyduYjCGL6I7NvyXxKwnbgUYQYBo1oL78';
@@ -31,13 +31,13 @@ export const AudioFeedback = () => {
   const recordingStartTimeRef = useRef<number>(0);
   const useElevenLabsRef = useRef(true);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const conversation = useConversation({
     onMessage: (message) => {
       console.log("Mensaje recibido:", message);
-      
       if (message.type === "agent_response") {
         try {
           const analysis = JSON.parse(message.content);
@@ -75,21 +75,30 @@ export const AudioFeedback = () => {
   const uploadToSupabase = async (audioBlob: Blob) => {
     try {
       const fileName = `audio_${Date.now()}.webm`;
-      const { data, error } = await supabase.storage
-        .from(BUCKET_NAME)
-        .upload(fileName, audioBlob);
+      const formData = new FormData();
+      formData.append('file', audioBlob, fileName);
 
-      if (error) throw error;
+      // Subir directamente usando fetch con las credenciales correctas
+      const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${fileName}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: formData
+      });
 
-      // Obtener la URL pública del archivo
-      const { data: { publicUrl } } = supabase.storage
-        .from(BUCKET_NAME)
-        .getPublicUrl(fileName);
+      if (!response.ok) {
+        throw new Error(`Error al subir: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${fileName}`;
 
       console.log('Audio guardado en:', publicUrl);
 
       // Enviar a Make
-      const response = await fetch(MAKE_WEBHOOK_URL, {
+      const makeResponse = await fetch(MAKE_WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,11 +109,11 @@ export const AudioFeedback = () => {
         }),
       });
 
-      if (!response.ok) {
+      if (!makeResponse.ok) {
         throw new Error('Error al enviar a Make');
       }
 
-      const analysisData = await response.json();
+      const analysisData = await makeResponse.json();
       analyzeFeedback(analysisData);
 
     } catch (error) {
@@ -141,19 +150,25 @@ export const AudioFeedback = () => {
       mediaRecorderRef.current = mediaRecorder;
       recordingStartTimeRef.current = Date.now();
       useElevenLabsRef.current = true;
+      audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = async (e) => {
         if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
           if (useElevenLabsRef.current) {
-            // Usar ElevenLabs
             conversation.startSession({
               agentId: "DnScXfRTfQyBlJMBhfKb",
             });
-          } else {
-            // Usar Supabase + Make
-            await uploadToSupabase(e.data);
           }
         }
+      };
+
+      mediaRecorder.onstop = async () => {
+        if (!useElevenLabsRef.current && audioChunksRef.current.length > 0) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          await uploadToSupabase(audioBlob);
+        }
+        audioChunksRef.current = [];
       };
 
       const checkTimeInterval = setInterval(checkRecordingTime, 1000);
@@ -197,7 +212,6 @@ export const AudioFeedback = () => {
     let feedbackType: FeedbackState["type"] = "neutral";
     let message = "";
 
-    // Mensajes concisos por etapa con emojis
     switch (analysis.stage) {
       case 1:
         if (analysis.matchScore && analysis.matchScore > 0.8) {
