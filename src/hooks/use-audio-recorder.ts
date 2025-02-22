@@ -15,12 +15,14 @@ export const useAudioRecorder = ({ onRecordingComplete, onRecordingTimeout }: Us
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const checkTimeIntervalRef = useRef<NodeJS.Timeout>();
+  const streamRef = useRef<MediaStream | null>(null);
 
   const checkRecordingTime = () => {
     if (recordingStartTimeRef.current) {
       const currentTime = Date.now();
       if (currentTime - recordingStartTimeRef.current >= RECORDING_TIMEOUT) {
         onRecordingTimeout();
+        // No detenemos la grabación, solo notificamos el timeout
       }
     }
   };
@@ -28,6 +30,7 @@ export const useAudioRecorder = ({ onRecordingComplete, onRecordingTimeout }: Us
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm'
       });
@@ -43,7 +46,9 @@ export const useAudioRecorder = ({ onRecordingComplete, onRecordingTimeout }: Us
       };
 
       mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(track => track.stop());
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
         if (checkTimeIntervalRef.current) {
           clearInterval(checkTimeIntervalRef.current);
         }
