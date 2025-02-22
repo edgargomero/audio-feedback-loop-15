@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -32,6 +31,7 @@ export const AudioFeedback = () => {
   const useElevenLabsRef = useRef(true);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const checkTimeIntervalRef = useRef<NodeJS.Timeout>();
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -64,36 +64,33 @@ export const AudioFeedback = () => {
     },
     onDisconnect: () => {
       console.log("Desconectado");
-      setIsRecording(false);
-      setFeedback({
-        type: "neutral",
-        message: "Fin 👋",
-      });
+      if (useElevenLabsRef.current) {
+        useElevenLabsRef.current = false;
+        handleStopRecording();
+      }
     }
   });
 
   const uploadToSupabase = async (audioBlob: Blob) => {
     try {
       const fileName = `audio_${Date.now()}.webm`;
-      const formData = new FormData();
-      formData.append('file', audioBlob, fileName);
+      
+      // Usar el cliente de Supabase directamente
+      const { data, error } = await supabase.storage
+        .from(BUCKET_NAME)
+        .upload(fileName, audioBlob, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      // Subir directamente usando fetch con las credenciales correctas
-      const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${fileName}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'apikey': SUPABASE_ANON_KEY,
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error al subir: ${response.statusText}`);
+      if (error) {
+        console.error('Error de Supabase:', error);
+        throw error;
       }
 
-      const data = await response.json();
-      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${fileName}`;
+      const { data: { publicUrl } } = supabase.storage
+        .from(BUCKET_NAME)
+        .getPublicUrl(fileName);
 
       console.log('Audio guardado en:', publicUrl);
 
@@ -152,7 +149,7 @@ export const AudioFeedback = () => {
       useElevenLabsRef.current = true;
       audioChunksRef.current = [];
 
-      mediaRecorder.ondataavailable = async (e) => {
+      mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           audioChunksRef.current.push(e.data);
           if (useElevenLabsRef.current) {
@@ -164,6 +161,11 @@ export const AudioFeedback = () => {
       };
 
       mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        if (checkTimeIntervalRef.current) {
+          clearInterval(checkTimeIntervalRef.current);
+        }
+
         if (!useElevenLabsRef.current && audioChunksRef.current.length > 0) {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           await uploadToSupabase(audioBlob);
@@ -171,13 +173,8 @@ export const AudioFeedback = () => {
         audioChunksRef.current = [];
       };
 
-      const checkTimeInterval = setInterval(checkRecordingTime, 1000);
+      checkTimeIntervalRef.current = setInterval(checkRecordingTime, 1000);
       
-      mediaRecorder.onstop = () => {
-        clearInterval(checkTimeInterval);
-        stream.getTracks().forEach(track => track.stop());
-      };
-
       mediaRecorder.start(1000);
       setIsRecording(true);
       setFeedback({
@@ -198,11 +195,11 @@ export const AudioFeedback = () => {
   const handleStopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
+      setIsRecording(false);
       if (useElevenLabsRef.current) {
         conversation.endSession();
       }
     }
-    setIsRecording(false);
   };
 
   const analyzeSalesStage = (analysis: Partial<SalesAnalysis>) => {
