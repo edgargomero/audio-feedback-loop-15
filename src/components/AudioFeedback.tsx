@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -14,7 +13,7 @@ interface FeedbackState {
   analysis?: Partial<SalesAnalysis>;
 }
 
-const CHUNK_SIZE = 10000; // 10 segundos en milisegundos
+const CHUNK_SIZE = 10000;
 
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -36,7 +35,6 @@ export const AudioFeedback = () => {
     try {
       console.log('Processing audio chunk...');
       
-      // Convertir el chunk de audio a base64
       const base64Audio = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -48,14 +46,9 @@ export const AudioFeedback = () => {
 
       console.log('Sending to Supabase function...');
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-
+      // Llamar a la función sin autenticación por ahora
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: { audio: base64Audio },
-        headers: accessToken ? {
-          Authorization: `Bearer ${accessToken}`
-        } : undefined
+        body: { audio: base64Audio }
       });
 
       if (error) {
