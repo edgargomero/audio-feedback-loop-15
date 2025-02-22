@@ -2,46 +2,29 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, BUCKET_NAME, MAKE_WEBHOOK_URL } from '../types/feedback';
 
-// Crear el cliente con opciones adicionales
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: false // Desactivar persistencia de sesión
-  }
-});
+// Crear cliente de Supabase con configuración mínima
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export const uploadToSupabase = async (audioBlob: Blob) => {
   try {
     console.log('Iniciando subida a Supabase...');
     console.log('URL:', SUPABASE_URL);
-    console.log('Bucket:', BUCKET_NAME);
     
     const fileName = `audio_${Date.now()}.webm`;
     
-    // Verificar si podemos acceder al bucket
-    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-    
-    if (bucketsError) {
-      console.error('Error al listar buckets:', bucketsError);
-      throw bucketsError;
-    }
-    
-    console.log('Buckets disponibles:', buckets);
-
-    // Intentar la subida del archivo
-    const { data, error: uploadError } = await supabase.storage
+    // Intentar subida directa sin verificar buckets
+    const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(fileName, audioBlob, {
-        cacheControl: '3600',
-        contentType: 'audio/webm',
-        upsert: true
+        contentType: 'audio/webm'
       });
 
-    if (uploadError) {
-      console.error('Error al subir archivo:', uploadError);
-      throw uploadError;
+    if (error) {
+      console.error('Error al subir archivo:', error);
+      throw error;
     }
 
-    // Obtener la URL pública
+    // Obtener URL pública
     const { data: { publicUrl } } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(fileName);
