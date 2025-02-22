@@ -22,19 +22,19 @@ serve(async (req) => {
     const { audio } = await req.json()
     
     if (!audio) {
-      throw new Error('No audio data provided')
+      return new Response(
+        JSON.stringify({ error: 'No audio data provided' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     console.log('Processing audio chunk...');
 
-    // Convert base64 to audio data
+    // Extract base64 data
     const base64Data = audio.split(',')[1] || audio;
-    const blobData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-    const audioBlob = new Blob([blobData], { type: 'audio/webm' });
-
-    // Create FormData and append the audio file
-    const formData = new FormData();
-    formData.append('audio', audioBlob, 'audio.webm');
 
     // Call FAL.AI whisper endpoint
     console.log('Calling FAL.AI whisper endpoint...');
@@ -45,16 +45,24 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        input: {
-          audio_data: base64Data
-        }
+        audio_url: audio // Send the complete data URL
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('FAL.AI API error:', errorText);
-      throw new Error(`FAL.AI API error: ${errorText}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Error en el servicio de transcripción',
+          details: errorText 
+        }),
+        {
+          status: response.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     const result = await response.json();
@@ -66,22 +74,27 @@ serve(async (req) => {
 
     if (webhookUrl && result.text) {
       console.log('Sending to Make webhook...');
-      const makeResponse = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: result.text,
-          timestamp: new Date().toISOString(),
-        }),
-      });
+      try {
+        const makeResponse = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: result.text,
+            timestamp: new Date().toISOString(),
+          }),
+        });
 
-      if (makeResponse.ok) {
-        analysis = await makeResponse.json();
-        console.log('Make analysis:', analysis);
-      } else {
-        console.error('Make webhook error:', await makeResponse.text());
+        if (makeResponse.ok) {
+          analysis = await makeResponse.json();
+          console.log('Make analysis:', analysis);
+        } else {
+          console.error('Make webhook error:', await makeResponse.text());
+        }
+      } catch (webhookError) {
+        console.error('Make webhook error:', webhookError);
+        // Continue execution even if webhook fails
       }
     }
 
@@ -100,10 +113,11 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Function error:', error);
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        errorDetail: error.stack 
+        error: 'Error al procesar el audio',
+        details: error.message 
       }),
       {
         status: 500,
