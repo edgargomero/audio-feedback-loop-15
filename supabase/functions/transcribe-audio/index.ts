@@ -27,7 +27,7 @@ serve(async (req) => {
 
     console.log('Processing audio chunk...');
 
-    // Process base64 audio
+    // Convert base64 to Blob URL
     const base64Data = audio.split(',')[1] || audio;
     const binaryStr = atob(base64Data);
     const bytes = new Uint8Array(binaryStr.length);
@@ -36,37 +36,46 @@ serve(async (req) => {
       bytes[i] = binaryStr.charCodeAt(i);
     }
 
-    console.log('Sending to Whisper API...');
-    
-    // Prepare form data for Whisper
-    const formData = new FormData()
-    const blob = new Blob([bytes], { type: 'audio/webm' })
-    formData.append('file', blob, 'audio.webm')
-    formData.append('model', 'whisper-1')
+    const blob = new Blob([bytes], { type: 'audio/webm' });
+    const audioFile = new File([blob], 'audio.webm', { type: 'audio/webm' });
 
-    // Send to OpenAI Whisper
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    // Create FormData and append the file
+    const formData = new FormData();
+    formData.append('file', audioFile);
+
+    // Generate a unique URL for the blob
+    const blobUrl = URL.createObjectURL(blob);
+    console.log('Audio blob URL created:', blobUrl);
+
+    // Call FAL.AI whisper endpoint
+    console.log('Calling FAL.AI whisper endpoint...');
+    const response = await fetch('https://rest.fal.ai/fal-ai/whisper', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('FAL_KEY')}`,
+        'Content-Type': 'application/json',
       },
-      body: formData,
-    })
+      body: JSON.stringify({
+        input: {
+          audio_url: blobUrl
+        }
+      })
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Whisper API error:', errorText);
-      throw new Error(`Whisper API error: ${errorText}`);
+      console.error('FAL.AI API error:', errorText);
+      throw new Error(`FAL.AI API error: ${errorText}`);
     }
 
-    const result = await response.json()
-    console.log('Whisper transcription:', result.text);
+    const result = await response.json();
+    console.log('FAL.AI transcription:', result);
 
     // Send to Make webhook if URL is configured
     const webhookUrl = Deno.env.get('MAKE_WEBHOOK_URL');
     let analysis = null;
 
-    if (webhookUrl) {
+    if (webhookUrl && result.text) {
       console.log('Sending to Make webhook...');
       const makeResponse = await fetch(webhookUrl, {
         method: 'POST',
@@ -115,5 +124,8 @@ serve(async (req) => {
         },
       }
     )
+  } finally {
+    // Clean up any created blob URLs
+    // URL.revokeObjectURL(blobUrl);
   }
 })
