@@ -1,11 +1,11 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
 import { Mic, Square, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
-import { useConversation } from "@11labs/react";
-import { SalesAnalysis, SalesStage, SALES_STAGES } from "../types/sales";
+import { SalesAnalysis, SalesStage } from "../types/sales";
+import { createClient } from '@supabase/supabase-js'
 
 interface FeedbackState {
   type: "positive" | "neutral" | "negative";
@@ -14,6 +14,8 @@ interface FeedbackState {
   analysis?: Partial<SalesAnalysis>;
 }
 
+const CHUNK_SIZE = 10000; // 10 segundos en milisegundos
+
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>({
@@ -21,148 +23,93 @@ export const AudioFeedback = () => {
     message: "Listo 👋",
   });
   const { toast } = useToast();
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const [transcription, setTranscription] = useState("");
 
-  const conversation = useConversation({
-    onMessage: (message) => {
-      console.log("Mensaje recibido:", message);
-      
-      if (message.type === "agent_response") {
-        try {
-          const analysis = JSON.parse(message.content);
-          analyzeSalesStage(analysis);
-        } catch (e) {
-          analyzeFeedback(message.content);
-        }
-      }
-    },
-    onError: (error) => {
-      console.error("Error en la conversación:", error);
-      toast({
-        title: "Error",
-        description: "❌ Error de conexión",
-        variant: "destructive",
-      });
-    },
-    onConnect: () => {
-      console.log("Conexión establecida");
-      setFeedback({
-        type: "positive",
-        message: "Conectado ✅",
-      });
-    },
-    onDisconnect: () => {
-      console.log("Desconectado");
-      setIsRecording(false);
-      setFeedback({
-        type: "neutral",
-        message: "Fin 👋",
-      });
-    }
-  });
+  const supabase = createClient(
+    'https://vpvjfmxakuwphkcdsvze.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwdmpmbXhha3V3cGhrY2RzdnplIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1OTY0NDcsImV4cCI6MjAyNTE3MjQ0N30.EkyRW6CNFKhyduYjCGL6I7NvyXxKwnbgUYQYBo1oL78'
+  );
 
-  const analyzeSalesStage = (analysis: Partial<SalesAnalysis>) => {
-    if (!analysis.stage) return;
-
-    const stage = SALES_STAGES[analysis.stage];
-    let feedbackType: FeedbackState["type"] = "neutral";
-    let message = "";
-
-    // Mensajes concisos por etapa con emojis
-    switch (analysis.stage) {
-      case 1:
-        if (analysis.matchScore && analysis.matchScore > 0.8) {
-          message = "Buen match! 🤝";
-          feedbackType = "positive";
-        } else {
-          message = "Más rapport 🎯";
-          feedbackType = "negative";
-        }
-        break;
-      case 2:
-        if (analysis.needsIdentified?.length) {
-          message = `${analysis.needsIdentified.length} necesidades ✅`;
-          feedbackType = "positive";
-        } else {
-          message = "Indaga más 🔍";
-          feedbackType = "neutral";
-        }
-        break;
-      case 3:
-        if (analysis.brandValues) {
-          message = "Valores ✨";
-          feedbackType = "positive";
-        } else {
-          message = "Resalta marca ⭐";
-          feedbackType = "neutral";
-        }
-        break;
-      case 4:
-        if (analysis.closingTechnique) {
-          message = "¡Cierra! 🎯";
-          feedbackType = "positive";
-        } else {
-          message = "Busca cierre 🎯";
-          feedbackType = "neutral";
-        }
-        break;
-    }
-
-    setFeedback({
-      type: feedbackType,
-      message,
-      stage: analysis.stage,
-      analysis
-    });
-  };
-
-  const analyzeFeedback = (content: string) => {
-    const lowerContent = content.toLowerCase();
+  const analyzeFeedback = (analysis: any) => {
     let feedbackState: FeedbackState = {
       type: "neutral",
       message: "Escuchando... 👂"
     };
 
-    if (lowerContent.includes("match exitoso") || lowerContent.includes("buena conexión")) {
-      feedbackState = {
-        type: "positive",
-        message: "Match! 🤝",
-        stage: 1
-      };
-    } else if (lowerContent.includes("necesidad identificada")) {
-      feedbackState = {
-        type: "positive",
-        message: "Necesidad ✅",
-        stage: 2
-      };
-    } else if (lowerContent.includes("propuesta")) {
-      feedbackState = {
-        type: "neutral",
-        message: "Propuesta 💡",
-        stage: 3
-      };
-    } else if (lowerContent.includes("cierre")) {
-      feedbackState = {
-        type: "positive",
-        message: "¡Cierra! 🎯",
-        stage: 4
-      };
+    // Analiza la respuesta de Make/LLM
+    if (analysis.confidence > 0.8) {
+      feedbackState.type = "positive";
+      feedbackState.message = `${analysis.recommendation} ✅`;
+    } else {
+      feedbackState.type = "neutral";
+      feedbackState.message = `${analysis.recommendation} 🤔`;
+    }
+
+    if (analysis.stage) {
+      feedbackState.stage = analysis.stage;
     }
 
     setFeedback(feedbackState);
   };
 
+  const processAudioChunk = async (chunk: Blob) => {
+    try {
+      const base64Audio = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+        reader.readAsDataURL(chunk);
+      });
+
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: { audio: base64Audio }
+      });
+
+      if (error) throw error;
+
+      if (data.text) {
+        setTranscription(prev => `${prev} ${data.text}`);
+      }
+
+      if (data.analysis) {
+        analyzeFeedback(data.analysis);
+      }
+
+    } catch (error) {
+      console.error('Error processing audio:', error);
+      toast({
+        title: "Error",
+        description: "Error al procesar el audio ❌",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleStartRecording = async () => {
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+          processAudioChunk(e.data);
+        }
+      };
+
+      mediaRecorder.start(CHUNK_SIZE);
       setIsRecording(true);
       setFeedback({
         type: "neutral",
         message: "Iniciando... 🎤",
       });
-      
-      conversation.startSession({
-        agentId: "DnScXfRTfQyBlJMBhfKb",
-      });
+
     } catch (error) {
       console.error("Error al acceder al micrófono:", error);
       toast({
@@ -174,8 +121,12 @@ export const AudioFeedback = () => {
   };
 
   const handleStopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
     setIsRecording(false);
-    conversation.endSession();
+    setTranscription("");
   };
 
   const getFeedbackColor = (type: FeedbackState["type"]) => {
@@ -218,6 +169,13 @@ export const AudioFeedback = () => {
             )}
           </Button>
         </div>
+
+        {transcription && (
+          <div className="p-4 rounded-lg bg-gray-50">
+            <p className="text-sm text-gray-600">Transcripción:</p>
+            <p className="text-gray-800">{transcription}</p>
+          </div>
+        )}
 
         <div
           className={`p-4 rounded-lg feedback-transition ${getFeedbackColor(
