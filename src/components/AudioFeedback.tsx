@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
-import { Mic, Square, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
+import { Mic, Square, Upload } from "lucide-react";
 import { useConversation } from "@11labs/react";
-import { SalesAnalysis, SalesStage, SALES_STAGES } from "../types/sales";
+import { SalesAnalysis, SalesStage } from "../types/sales";
 
 interface FeedbackState {
   type: "positive" | "neutral" | "negative";
@@ -16,6 +16,7 @@ interface FeedbackState {
 
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingExtra, setIsRecordingExtra] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>({
     type: "neutral",
     message: "Listo 👋",
@@ -178,32 +179,47 @@ export const AudioFeedback = () => {
     conversation.endSession();
   };
 
-  const getFeedbackColor = (type: FeedbackState["type"]) => {
-    switch (type) {
-      case "positive":
-        return "bg-green-100 text-green-800";
-      case "negative":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const handleExtraRecording = async () => {
+    if (!isRecordingExtra) {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        setIsRecordingExtra(true);
+        toast({
+          title: "Grabando",
+          description: "Grabando audio adicional...",
+        });
+      } catch (error) {
+        console.error("Error al acceder al micrófono:", error);
+        toast({
+          title: "Error",
+          description: "No hay micrófono ❌",
+          variant: "destructive",
+        });
+      }
+    } else {
+      setIsRecordingExtra(false);
+      toast({
+        title: "Guardado",
+        description: "Audio adicional guardado para procesamiento posterior",
+      });
     }
   };
 
-  const getFeedbackIcon = (type: FeedbackState["type"]) => {
+  const getFeedbackColor = (type: FeedbackState["type"]) => {
     switch (type) {
       case "positive":
-        return <ThumbsUp className="w-6 h-6" />;
+        return "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100";
       case "negative":
-        return <ThumbsDown className="w-6 h-6" />;
+        return "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100";
       default:
-        return <AlertCircle className="w-6 h-6" />;
+        return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100";
     }
   };
 
   return (
-    <Card className="p-6 max-w-md mx-auto mt-10 shadow-lg">
+    <Card className="p-6 max-w-md mx-auto mt-10 shadow-lg bg-white dark:bg-gray-800">
       <div className="space-y-6">
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-4">
           <Button
             onClick={isRecording ? handleStopRecording : handleStartRecording}
             variant={isRecording ? "destructive" : "default"}
@@ -217,6 +233,16 @@ export const AudioFeedback = () => {
               <Mic className="w-6 h-6" />
             )}
           </Button>
+
+          <Button
+            onClick={handleExtraRecording}
+            variant="outline"
+            className={`w-16 h-16 rounded-full flex items-center justify-center ${
+              isRecordingExtra ? "recording-pulse" : ""
+            }`}
+          >
+            <Upload className="w-6 h-6" />
+          </Button>
         </div>
 
         <div
@@ -225,7 +251,6 @@ export const AudioFeedback = () => {
           )}`}
         >
           <div className="flex items-center justify-center space-x-2">
-            {getFeedbackIcon(feedback.type)}
             <p className="text-center text-lg font-medium">{feedback.message}</p>
           </div>
           {feedback.stage && (
@@ -235,8 +260,8 @@ export const AudioFeedback = () => {
           )}
         </div>
 
-        {isRecording && (
-          <div className="text-center text-sm text-gray-500">
+        {(isRecording || isRecordingExtra) && (
+          <div className="text-center text-sm text-gray-500 dark:text-gray-400">
             🎤 Grabando...
           </div>
         )}
