@@ -1,31 +1,31 @@
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
-import { Mic, Square } from "lucide-react";
+import { Mic, Square, ThumbsUp, ThumbsDown, AlertCircle } from "lucide-react";
 import { useConversation } from "@11labs/react";
-import { SalesAnalysis } from "../types/sales";
-import { FeedbackState, APP_VERSION } from "../types/feedback";
-import { useAudioRecorder } from "../hooks/use-audio-recorder";
-import { FeedbackDisplay } from "./FeedbackDisplay";
+import { SalesAnalysis, SalesStage, SALES_STAGES } from "../types/sales";
+
+interface FeedbackState {
+  type: "positive" | "neutral" | "negative";
+  message: string;
+  stage?: SalesStage;
+  analysis?: Partial<SalesAnalysis>;
+}
 
 export const AudioFeedback = () => {
+  const [isRecording, setIsRecording] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>({
     type: "neutral",
     message: "Listo 👋",
   });
-  const [isConnected, setIsConnected] = useState(false);
   const { toast } = useToast();
-  const analysisPendingRef = useRef(false);
-
-  useEffect(() => {
-    console.log("Version actual:", APP_VERSION);
-  }, []);
 
   const conversation = useConversation({
     onMessage: (message) => {
       console.log("Mensaje recibido:", message);
+      
       if (message.type === "agent_response") {
         try {
           const analysis = JSON.parse(message.content);
@@ -37,7 +37,6 @@ export const AudioFeedback = () => {
     },
     onError: (error) => {
       console.error("Error en la conversación:", error);
-      setIsConnected(false);
       toast({
         title: "Error",
         description: "❌ Error de conexión",
@@ -46,69 +45,29 @@ export const AudioFeedback = () => {
     },
     onConnect: () => {
       console.log("Conexión establecida");
-      setIsConnected(true);
       setFeedback({
         type: "positive",
         message: "Conectado ✅",
       });
     },
     onDisconnect: () => {
-      console.log("Desconectado de ElevenLabs");
-      setIsConnected(false);
-      // Intentar reconectar si hay un análisis pendiente
-      if (analysisPendingRef.current) {
-        handleStartRecording();
-      }
-    }
-  });
-
-  const handleRecordingComplete = async (audioBlob: Blob) => {
-    if (!isConnected && !analysisPendingRef.current) {
-      // Si no está conectado, intentar reconectar
-      analysisPendingRef.current = true;
-      await handleStartRecording();
-      return;
-    }
-    analysisPendingRef.current = false;
-  };
-
-  const { isRecording, startRecording, stopRecording } = useAudioRecorder({
-    onRecordingComplete: handleRecordingComplete,
-    onRecordingTimeout: () => {
-      analysisPendingRef.current = false;
-      toast({
-        title: "Información",
-        description: "Tiempo de grabación excedido",
+      console.log("Desconectado");
+      setIsRecording(false);
+      setFeedback({
+        type: "neutral",
+        message: "Fin 👋",
       });
     }
   });
 
-  const handleStartRecording = async () => {
-    if (!isRecording) {
-      try {
-        await conversation.startSession({
-          agentId: "DnScXfRTfQyBlJMBhfKb",
-        });
-        startRecording();
-      } catch (error) {
-        console.error("Error al iniciar sesión:", error);
-        toast({
-          title: "Error",
-          description: "Error al conectar con el servicio ❌",
-          variant: "destructive",
-        });
-      }
-    } else {
-      stopRecording();
-    }
-  };
-
   const analyzeSalesStage = (analysis: Partial<SalesAnalysis>) => {
     if (!analysis.stage) return;
 
+    const stage = SALES_STAGES[analysis.stage];
     let feedbackType: FeedbackState["type"] = "neutral";
     let message = "";
 
+    // Mensajes concisos por etapa con emojis
     switch (analysis.stage) {
       case 1:
         if (analysis.matchScore && analysis.matchScore > 0.8) {
@@ -192,12 +151,61 @@ export const AudioFeedback = () => {
     setFeedback(feedbackState);
   };
 
+  const handleStartRecording = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setIsRecording(true);
+      setFeedback({
+        type: "neutral",
+        message: "Iniciando... 🎤",
+      });
+      
+      conversation.startSession({
+        agentId: "DnScXfRTfQyBlJMBhfKb",
+      });
+    } catch (error) {
+      console.error("Error al acceder al micrófono:", error);
+      toast({
+        title: "Error",
+        description: "No hay micrófono ❌",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStopRecording = () => {
+    setIsRecording(false);
+    conversation.endSession();
+  };
+
+  const getFeedbackColor = (type: FeedbackState["type"]) => {
+    switch (type) {
+      case "positive":
+        return "bg-green-100 text-green-800";
+      case "negative":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getFeedbackIcon = (type: FeedbackState["type"]) => {
+    switch (type) {
+      case "positive":
+        return <ThumbsUp className="w-6 h-6" />;
+      case "negative":
+        return <ThumbsDown className="w-6 h-6" />;
+      default:
+        return <AlertCircle className="w-6 h-6" />;
+    }
+  };
+
   return (
     <Card className="p-6 max-w-md mx-auto mt-10 shadow-lg">
       <div className="space-y-6">
         <div className="flex justify-center">
           <Button
-            onClick={handleStartRecording}
+            onClick={isRecording ? handleStopRecording : handleStartRecording}
             variant={isRecording ? "destructive" : "default"}
             className={`w-16 h-16 rounded-full flex items-center justify-center ${
               isRecording ? "recording-pulse" : ""
@@ -211,17 +219,27 @@ export const AudioFeedback = () => {
           </Button>
         </div>
 
-        <FeedbackDisplay feedback={feedback} />
+        <div
+          className={`p-4 rounded-lg feedback-transition ${getFeedbackColor(
+            feedback.type
+          )}`}
+        >
+          <div className="flex items-center justify-center space-x-2">
+            {getFeedbackIcon(feedback.type)}
+            <p className="text-center text-lg font-medium">{feedback.message}</p>
+          </div>
+          {feedback.stage && (
+            <p className="text-center text-sm mt-2">
+              Etapa {feedback.stage}
+            </p>
+          )}
+        </div>
 
         {isRecording && (
           <div className="text-center text-sm text-gray-500">
             🎤 Grabando...
           </div>
         )}
-
-        <div className="text-center text-xs text-gray-400">
-          v{APP_VERSION}
-        </div>
       </div>
     </Card>
   );
