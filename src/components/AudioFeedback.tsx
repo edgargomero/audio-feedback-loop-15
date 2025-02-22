@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -62,8 +61,7 @@ export const AudioFeedback = () => {
       const base64Audio = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          // Extraer solo la parte base64 del data URL
-          const base64 = (reader.result as string).split(',')[1];
+          const base64 = reader.result as string;
           resolve(base64);
         };
         reader.readAsDataURL(chunk);

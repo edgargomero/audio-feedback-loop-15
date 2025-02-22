@@ -33,6 +33,9 @@ serve(async (req) => {
 
     console.log('Processing audio chunk...');
 
+    // Extract base64 data
+    const base64Data = audio.split(',')[1] || audio;
+
     // Call FAL.AI whisper endpoint
     console.log('Calling FAL.AI whisper endpoint...');
     const response = await fetch('https://rest.fal.ai/fal-ai/whisper', {
@@ -42,7 +45,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        audio_url: audio
+        audio_url: audio // Send the complete data URL
       })
     });
 
@@ -65,14 +68,14 @@ serve(async (req) => {
     const result = await response.json();
     console.log('FAL.AI transcription:', result);
 
-    // Send to Make webhook
-    const makeWebhookUrl = 'https://hook.us2.make.com/d3kepgsztrxekbdjiwrq8zn05l5zo5bs';
+    // Send to Make webhook if URL is configured
+    const webhookUrl = Deno.env.get('MAKE_WEBHOOK_URL');
     let analysis = null;
 
-    if (result.text) {
+    if (webhookUrl && result.text) {
       console.log('Sending to Make webhook...');
       try {
-        const makeResponse = await fetch(makeWebhookUrl, {
+        const makeResponse = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
