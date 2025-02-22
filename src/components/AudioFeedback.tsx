@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -49,10 +48,6 @@ export const AudioFeedback = () => {
         type: "positive",
         message: "Conectado ✅",
       });
-      // Iniciamos la sesión de ElevenLabs al conectar
-      conversation.startSession({
-        agentId: "DnScXfRTfQyBlJMBhfKb",
-      });
     },
     onDisconnect: () => {
       console.log("Desconectado de ElevenLabs");
@@ -93,6 +88,20 @@ export const AudioFeedback = () => {
       }
     }
   });
+
+  const handleStartRecording = async () => {
+    if (!isRecording) {
+      if (useElevenLabsRef.current) {
+        // Iniciar sesión de ElevenLabs solo cuando se presiona el botón
+        await conversation.startSession({
+          agentId: "DnScXfRTfQyBlJMBhfKb",
+        });
+      }
+      startRecording();
+    } else {
+      stopRecording();
+    }
+  };
 
   const analyzeSalesStage = (analysis: Partial<SalesAnalysis>) => {
     if (!analysis.stage) return;
@@ -183,21 +192,12 @@ export const AudioFeedback = () => {
     setFeedback(feedbackState);
   };
 
-  useEffect(() => {
-    // Iniciar la sesión inmediatamente cuando el componente se monta
-    if (useElevenLabsRef.current) {
-      conversation.startSession({
-        agentId: "DnScXfRTfQyBlJMBhfKb",
-      });
-    }
-  }, []);
-
   return (
     <Card className="p-6 max-w-md mx-auto mt-10 shadow-lg">
       <div className="space-y-6">
         <div className="flex justify-center">
           <Button
-            onClick={isRecording ? stopRecording : startRecording}
+            onClick={handleStartRecording}
             variant={isRecording ? "destructive" : "default"}
             className={`w-16 h-16 rounded-full flex items-center justify-center ${
               isRecording ? "recording-pulse" : ""
