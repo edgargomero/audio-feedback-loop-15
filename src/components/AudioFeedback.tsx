@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -7,7 +8,6 @@ import { useConversation } from "@11labs/react";
 import { SalesAnalysis } from "../types/sales";
 import { FeedbackState, APP_VERSION } from "../types/feedback";
 import { useAudioRecorder } from "../hooks/use-audio-recorder";
-import { uploadToSupabase } from "../services/storage-service";
 import { FeedbackDisplay } from "./FeedbackDisplay";
 
 export const AudioFeedback = () => {
@@ -16,7 +16,7 @@ export const AudioFeedback = () => {
     message: "Listo 👋",
   });
   const { toast } = useToast();
-  const useElevenLabsRef = useRef(true);
+  const analysisPendingRef = useRef(false);
 
   useEffect(() => {
     console.log("Version actual:", APP_VERSION);
@@ -51,53 +51,49 @@ export const AudioFeedback = () => {
     },
     onDisconnect: () => {
       console.log("Desconectado de ElevenLabs");
-      if (useElevenLabsRef.current) {
-        useElevenLabsRef.current = false;
+      // Intentar reconectar si hay un análisis pendiente
+      if (analysisPendingRef.current) {
+        handleStartRecording();
       }
     }
   });
 
   const handleRecordingComplete = async (audioBlob: Blob) => {
-    if (!useElevenLabsRef.current) {
-      try {
-        console.log("Enviando audio a Supabase...");
-        const analysisData = await uploadToSupabase(audioBlob);
-        analyzeFeedback(analysisData);
-      } catch (error) {
-        console.error("Error al procesar audio:", error);
-        toast({
-          title: "Error",
-          description: "Error al procesar el audio ❌",
-          variant: "destructive",
-        });
-      }
+    if (!conversation.isConnected && !analysisPendingRef.current) {
+      // Si no está conectado, intentar reconectar
+      analysisPendingRef.current = true;
+      await handleStartRecording();
+      return;
     }
+    analysisPendingRef.current = false;
   };
 
   const { isRecording, startRecording, stopRecording } = useAudioRecorder({
     onRecordingComplete: handleRecordingComplete,
     onRecordingTimeout: () => {
-      if (useElevenLabsRef.current) {
-        useElevenLabsRef.current = false;
-        conversation.endSession();
-        toast({
-          title: "Información",
-          description: "Cambiando a almacenamiento en Supabase",
-        });
-        console.log("Cambiando a modo Supabase");
-      }
+      analysisPendingRef.current = false;
+      toast({
+        title: "Información",
+        description: "Tiempo de grabación excedido",
+      });
     }
   });
 
   const handleStartRecording = async () => {
     if (!isRecording) {
-      if (useElevenLabsRef.current) {
-        // Iniciar sesión de ElevenLabs solo cuando se presiona el botón
+      try {
         await conversation.startSession({
           agentId: "DnScXfRTfQyBlJMBhfKb",
         });
+        startRecording();
+      } catch (error) {
+        console.error("Error al iniciar sesión:", error);
+        toast({
+          title: "Error",
+          description: "Error al conectar con el servicio ❌",
+          variant: "destructive",
+        });
       }
-      startRecording();
     } else {
       stopRecording();
     }
@@ -215,7 +211,7 @@ export const AudioFeedback = () => {
 
         {isRecording && (
           <div className="text-center text-sm text-gray-500">
-            🎤 Grabando... {useElevenLabsRef.current ? "(ElevenLabs)" : "(Supabase)"}
+            🎤 Grabando...
           </div>
         )}
 
