@@ -10,123 +10,80 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log('Function invoked with method:', req.method);
-
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight request');
     return new Response(null, {
       status: 204,
       headers: corsHeaders
-    });
+    })
   }
 
   try {
-    // Log headers for debugging
-    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
-
-    // Validate authorization
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('No authorization header found');
-      return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    const { audio } = await req.json();
+    const { audio } = await req.json()
     
     if (!audio) {
-      console.error('No audio data provided');
-      return new Response(
-        JSON.stringify({ error: 'No audio data provided' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      throw new Error('No audio data provided')
     }
 
     console.log('Processing audio chunk...');
 
-    // Convert base64 to audio data
+    // Process base64 audio
     const base64Data = audio.split(',')[1] || audio;
+    const binaryStr = atob(base64Data);
+    const bytes = new Uint8Array(binaryStr.length);
     
-    // Call FAL.AI whisper endpoint
-    console.log('Calling FAL.AI whisper endpoint...');
-    const falKey = Deno.env.get('FAL_KEY');
-    if (!falKey) {
-      console.error('FAL_KEY not configured');
-      return new Response(
-        JSON.stringify({ error: 'Transcription service not configured' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
     }
 
-    const response = await fetch('https://rest.fal.ai/fal-ai/whisper', {
+    console.log('Sending to Whisper API...');
+    
+    // Prepare form data for Whisper
+    const formData = new FormData()
+    const blob = new Blob([bytes], { type: 'audio/webm' })
+    formData.append('file', blob, 'audio.webm')
+    formData.append('model', 'whisper-1')
+
+    // Send to OpenAI Whisper
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${falKey}`,
-        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
       },
-      body: JSON.stringify({
-        input: {
-          audio_data: base64Data
-        }
-      })
-    });
+      body: formData,
+    })
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('FAL.AI API error:', errorText);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Error en el servicio de transcripción',
-          details: errorText 
-        }),
-        {
-          status: response.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      console.error('Whisper API error:', errorText);
+      throw new Error(`Whisper API error: ${errorText}`);
     }
 
-    const result = await response.json();
-    console.log('FAL.AI transcription result:', result);
+    const result = await response.json()
+    console.log('Whisper transcription:', result.text);
 
-    // Send to Make webhook
+    // Send to Make webhook if URL is configured
     const webhookUrl = Deno.env.get('MAKE_WEBHOOK_URL');
     let analysis = null;
 
-    if (webhookUrl && result.text) {
+    if (webhookUrl) {
       console.log('Sending to Make webhook...');
-      try {
-        const makeResponse = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text: result.text,
-            timestamp: new Date().toISOString(),
-          }),
-        });
+      const makeResponse = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: result.text,
+          timestamp: new Date().toISOString(),
+        }),
+      });
 
-        if (makeResponse.ok) {
-          analysis = await makeResponse.json();
-          console.log('Make analysis:', analysis);
-        } else {
-          console.error('Make webhook error:', await makeResponse.text());
-        }
-      } catch (webhookError) {
-        console.error('Make webhook error:', webhookError);
+      if (makeResponse.ok) {
+        analysis = await makeResponse.json();
+        console.log('Make analysis:', analysis);
+      } else {
+        console.error('Make webhook error:', await makeResponse.text());
       }
     }
 
@@ -141,14 +98,14 @@ serve(async (req) => {
           'Content-Type': 'application/json' 
         } 
       }
-    );
+    )
 
   } catch (error) {
     console.error('Function error:', error);
     return new Response(
       JSON.stringify({ 
-        error: 'Error al procesar el audio',
-        details: error.message 
+        error: error.message,
+        errorDetail: error.stack 
       }),
       {
         status: 500,
@@ -157,6 +114,6 @@ serve(async (req) => {
           'Content-Type': 'application/json' 
         },
       }
-    );
+    )
   }
-});
+})
