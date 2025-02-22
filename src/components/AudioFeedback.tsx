@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
 import { useConversation } from "@11labs/react";
@@ -12,6 +12,8 @@ import { useSalesAnalysis } from "../hooks/use-sales-analysis";
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isRecordingExtra, setIsRecordingExtra] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
   const { feedback, setFeedback, analyzeSalesStage, analyzeFeedback } = useSalesAnalysis();
 
@@ -83,7 +85,29 @@ export const AudioFeedback = () => {
   const handleExtraRecording = async () => {
     if (!isRecordingExtra) {
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          // Aquí podrías enviar el audioBlob al servidor o procesarlo
+          console.log("Audio grabado disponible en:", audioUrl);
+          
+          toast({
+            title: "Guardado",
+            description: "Audio grabado y listo para procesar",
+          });
+        };
+
+        mediaRecorder.start();
         setIsRecordingExtra(true);
         toast({
           title: "Grabando",
@@ -98,10 +122,34 @@ export const AudioFeedback = () => {
         });
       }
     } else {
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        const tracks = mediaRecorderRef.current.stream.getTracks();
+        tracks.forEach(track => track.stop());
+      }
       setIsRecordingExtra(false);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    try {
+      // Aquí podrías procesar el archivo MP3
+      console.log("Archivo MP3 recibido:", file);
+      
       toast({
-        title: "Guardado",
-        description: "Audio adicional guardado para procesamiento posterior",
+        title: "Archivo recibido",
+        description: `${file.name} listo para procesar`,
+      });
+
+      // Aquí podrías enviar el archivo al servidor o procesarlo
+      const audioUrl = URL.createObjectURL(file);
+      console.log("Audio del archivo disponible en:", audioUrl);
+    } catch (error) {
+      console.error("Error al procesar el archivo:", error);
+      toast({
+        title: "Error",
+        description: "Error al procesar el archivo ❌",
+        variant: "destructive",
       });
     }
   };
@@ -117,6 +165,7 @@ export const AudioFeedback = () => {
           <ExtraRecordButton 
             isRecording={isRecordingExtra}
             onToggleRecording={handleExtraRecording}
+            onFileUpload={handleFileUpload}
           />
         </div>
 
