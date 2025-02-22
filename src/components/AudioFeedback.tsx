@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Card } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
@@ -16,6 +15,8 @@ export const AudioFeedback = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
   const { feedback, setFeedback, analyzeSalesStage, analyzeFeedback } = useSalesAnalysis();
+
+  const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/fdfea2uux2sa7todteplybdudo45qpwm';
 
   const conversation = useConversation({
     onMessage: (message) => {
@@ -96,16 +97,12 @@ export const AudioFeedback = () => {
 
         mediaRecorder.onstop = () => {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
-          const audioUrl = URL.createObjectURL(audioBlob);
           
-          // Aquí creamos un FormData para enviar a Make
+          // Crear FormData para enviar a Make
           const formData = new FormData();
           formData.append('audio', audioBlob, 'recording.mp3');
           
-          // URL de tu webhook de Make (deberás reemplazarla con tu URL real)
-          const makeWebhookUrl = 'TU_URL_DE_MAKE';
-          
-          fetch(makeWebhookUrl, {
+          fetch(MAKE_WEBHOOK_URL, {
             method: 'POST',
             body: formData
           })
@@ -151,14 +148,10 @@ export const AudioFeedback = () => {
 
   const handleFileUpload = async (file: File) => {
     try {
-      // Crear FormData para enviar a Make
       const formData = new FormData();
       formData.append('audio', file);
       
-      // URL de tu webhook de Make (deberás reemplazarla con tu URL real)
-      const makeWebhookUrl = 'TU_URL_DE_MAKE';
-      
-      const response = await fetch(makeWebhookUrl, {
+      const response = await fetch(MAKE_WEBHOOK_URL, {
         method: 'POST',
         body: formData
       });
