@@ -1,11 +1,11 @@
 
 import { useState } from "react";
-import { SalesAnalysis, SALES_STAGES } from "../types/sales";
+import { SalesAnalysis, SalesStage } from "../types/sales";
 
 interface FeedbackState {
   type: "positive" | "neutral" | "negative";
   message: string;
-  stage?: number;
+  stage?: SalesStage;
   analysis?: Partial<SalesAnalysis>;
 }
 
@@ -63,7 +63,7 @@ export const useSalesAnalysis = () => {
     setFeedback({
       type: feedbackType,
       message,
-      stage: analysis.stage,
+      stage: analysis.stage as SalesStage,
       analysis
     });
   };
@@ -79,25 +79,25 @@ export const useSalesAnalysis = () => {
       feedbackState = {
         type: "positive",
         message: "Match! 🤝",
-        stage: 1
+        stage: 1 as SalesStage
       };
     } else if (lowerContent.includes("necesidad identificada")) {
       feedbackState = {
         type: "positive",
         message: "Necesidad ✅",
-        stage: 2
+        stage: 2 as SalesStage
       };
     } else if (lowerContent.includes("propuesta")) {
       feedbackState = {
         type: "neutral",
         message: "Propuesta 💡",
-        stage: 3
+        stage: 3 as SalesStage
       };
     } else if (lowerContent.includes("cierre")) {
       feedbackState = {
         type: "positive",
         message: "¡Cierra! 🎯",
-        stage: 4
+        stage: 4 as SalesStage
       };
     }
 
