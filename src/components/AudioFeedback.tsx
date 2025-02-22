@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -181,6 +182,15 @@ export const AudioFeedback = () => {
 
     setFeedback(feedbackState);
   };
+
+  useEffect(() => {
+    // Iniciar la sesión inmediatamente cuando el componente se monta
+    if (useElevenLabsRef.current) {
+      conversation.startSession({
+        agentId: "DnScXfRTfQyBlJMBhfKb",
+      });
+    }
+  }, []);
 
   return (
     <Card className="p-6 max-w-md mx-auto mt-10 shadow-lg">
