@@ -4,11 +4,11 @@ import { useToast } from "./use-toast";
 import { RECORDING_TIMEOUT } from "../types/feedback";
 
 interface UseAudioRecorderProps {
-  onDataAvailable: (data: Blob) => void;
+  onRecordingComplete: (data: Blob) => void;
   onRecordingTimeout: () => void;
 }
 
-export const useAudioRecorder = ({ onDataAvailable, onRecordingTimeout }: UseAudioRecorderProps) => {
+export const useAudioRecorder = ({ onRecordingComplete, onRecordingTimeout }: UseAudioRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const { toast } = useToast();
   const recordingStartTimeRef = useRef<number>(0);
@@ -39,7 +39,6 @@ export const useAudioRecorder = ({ onDataAvailable, onRecordingTimeout }: UseAud
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           audioChunksRef.current.push(e.data);
-          onDataAvailable(e.data);
         }
       };
 
@@ -51,7 +50,7 @@ export const useAudioRecorder = ({ onDataAvailable, onRecordingTimeout }: UseAud
 
         if (audioChunksRef.current.length > 0) {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          onDataAvailable(audioBlob);
+          onRecordingComplete(audioBlob);
         }
         audioChunksRef.current = [];
       };

@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -55,10 +54,10 @@ export const AudioFeedback = () => {
     }
   });
 
-  const handleDataAvailable = async (audioData: Blob) => {
+  const handleRecordingComplete = async (audioBlob: Blob) => {
     if (!useElevenLabsRef.current) {
       try {
-        const analysisData = await uploadToSupabase(audioData);
+        const analysisData = await uploadToSupabase(audioBlob);
         analyzeFeedback(analysisData);
       } catch (error) {
         toast({
@@ -67,15 +66,11 @@ export const AudioFeedback = () => {
           variant: "destructive",
         });
       }
-    } else if (useElevenLabsRef.current) {
-      conversation.startSession({
-        agentId: "DnScXfRTfQyBlJMBhfKb",
-      });
     }
   };
 
   const { isRecording, startRecording, stopRecording } = useAudioRecorder({
-    onDataAvailable: handleDataAvailable,
+    onRecordingComplete: handleRecordingComplete,
     onRecordingTimeout: () => {
       useElevenLabsRef.current = false;
       conversation.endSession();
