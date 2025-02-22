@@ -27,25 +27,14 @@ serve(async (req) => {
 
     console.log('Processing audio chunk...');
 
-    // Convert base64 to Blob URL
+    // Convert base64 to audio data
     const base64Data = audio.split(',')[1] || audio;
-    const binaryStr = atob(base64Data);
-    const bytes = new Uint8Array(binaryStr.length);
-    
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
+    const blobData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    const audioBlob = new Blob([blobData], { type: 'audio/webm' });
 
-    const blob = new Blob([bytes], { type: 'audio/webm' });
-    const audioFile = new File([blob], 'audio.webm', { type: 'audio/webm' });
-
-    // Create FormData and append the file
+    // Create FormData and append the audio file
     const formData = new FormData();
-    formData.append('file', audioFile);
-
-    // Generate a unique URL for the blob
-    const blobUrl = URL.createObjectURL(blob);
-    console.log('Audio blob URL created:', blobUrl);
+    formData.append('audio', audioBlob, 'audio.webm');
 
     // Call FAL.AI whisper endpoint
     console.log('Calling FAL.AI whisper endpoint...');
@@ -57,7 +46,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         input: {
-          audio_url: blobUrl
+          audio_data: base64Data
         }
       })
     });
@@ -124,8 +113,5 @@ serve(async (req) => {
         },
       }
     )
-  } finally {
-    // Clean up any created blob URLs
-    // URL.revokeObjectURL(blobUrl);
   }
 })
