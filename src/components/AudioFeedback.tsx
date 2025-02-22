@@ -15,7 +15,7 @@ interface FeedbackState {
   analysis?: Partial<SalesAnalysis>;
 }
 
-const RECORDING_TIMEOUT = 2000; // 2 segundos en milisegundos
+const RECORDING_TIMEOUT = 4000; // 2 segundos en milisegundos
 const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/468699b2kb5eoh918zklajo9um4mk9ia';
 const SUPABASE_URL = 'https://fajhodgsoykvmdgbsrud.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhamhvZGdzb3lrdm1kZ2JzcnVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1OTY0NDcsImV4cCI6MjAyNTE3MjQ0N30.EkyRW6CNFKhyduYjCGL6I7NvyXxKwnbgUYQYBo1oL78';
