@@ -70,7 +70,11 @@ export const AudioFeedback = () => {
       console.log('Sending to Supabase function...');
 
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: { audio: base64Audio }
+        body: { audio: base64Audio },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`,
+        }
       });
 
       if (error) {
