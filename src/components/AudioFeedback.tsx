@@ -1,91 +1,30 @@
 
-import { useState, useRef, useEffect } from "react";
 import { Card } from "./ui/card";
-import { RecordButton } from "./audio/RecordButton";
 import { UploadButton } from "./audio/UploadButton";
 import { FeedbackDisplay } from "./audio/FeedbackDisplay";
 import { ProcessingCountdown } from "./audio/ProcessingCountdown";
 import { ProgressIndicator } from "./audio/ProgressIndicator";
 import { AnalysisResult } from "./audio/AnalysisResult";
+import { RecordingControls } from "./audio/RecordingControls";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { useAudioRecorderState } from "../hooks/use-audio-recorder-state";
+import { startProgressAndTime, stopProgressAndTime, startProcessingCountdown } from "../utils/progressUtils";
 import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
 
 export const AudioFeedback = () => {
-  const [isRecording, setIsRecording] = useState(false);
-  const [progressValue, setProgressValue] = useState(0);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingTimeLeft, setProcessingTimeLeft] = useState(120);
-  const progressInterval = useRef<NodeJS.Timeout>();
-  const timeInterval = useRef<NodeJS.Timeout>();
-  const processingInterval = useRef<NodeJS.Timeout>();
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const { toast } = useToast();
   const { feedback, setFeedback } = useSalesAnalysis();
-
-  useEffect(() => {
-    return () => {
-      if (progressInterval.current) clearInterval(progressInterval.current);
-      if (timeInterval.current) clearInterval(timeInterval.current);
-      if (processingInterval.current) clearInterval(processingInterval.current);
-    };
-  }, []);
-
-  const startProgressAndTime = () => {
-    setProgressValue(0);
-    setRecordingTime(0);
-    
-    progressInterval.current = setInterval(() => {
-      setProgressValue(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval.current);
-          startProcessingCountdown();
-          return 100;
-        }
-        return prev + 1;
-      });
-    }, 100);
-
-    timeInterval.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1);
-    }, 1000);
-  };
-
-  const startProcessingCountdown = () => {
-    setIsProcessing(true);
-    setProcessingTimeLeft(120);
-
-    processingInterval.current = setInterval(() => {
-      setProcessingTimeLeft(prev => {
-        if (prev <= 0) {
-          clearInterval(processingInterval.current);
-          setIsProcessing(false);
-          setAnalysisResult("analysis_result.pdf");
-          toast({
-            title: "¡Análisis completado!",
-            description: "PDF generado y listo para descargar ✅",
-          });
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const stopProgressAndTime = () => {
-    if (progressInterval.current) clearInterval(progressInterval.current);
-    if (timeInterval.current) clearInterval(timeInterval.current);
-    setProgressValue(100);
-  };
+  const {
+    state,
+    setters,
+    refs,
+    toast
+  } = useAudioRecorderState();
 
   const cancelProcessing = () => {
-    if (processingInterval.current) clearInterval(processingInterval.current);
-    setIsProcessing(false);
-    setProgressValue(0);
+    if (refs.processingInterval.current) clearInterval(refs.processingInterval.current);
+    setters.setIsProcessing(false);
+    setters.setProgressValue(0);
     toast({
       title: "Procesamiento cancelado",
       description: "Se ha cancelado el procesamiento del audio",
@@ -95,22 +34,27 @@ export const AudioFeedback = () => {
   const handleStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      audioChunksRef.current = [];
+      state.mediaRecorderRef.current = new MediaRecorder(stream);
+      state.audioChunksRef.current = [];
 
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+      state.mediaRecorderRef.current.ondataavailable = (event) => {
+        state.audioChunksRef.current.push(event.data);
       };
 
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      state.mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(state.audioChunksRef.current, { type: 'audio/webm' });
         const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
         handleFileUpload(file);
       };
 
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-      startProgressAndTime();
+      state.mediaRecorderRef.current.start();
+      setters.setIsRecording(true);
+      startProgressAndTime(
+        setters.setProgressValue,
+        setters.setRecordingTime,
+        refs.progressInterval,
+        refs.timeInterval
+      );
       setFeedback({
         type: "neutral",
         message: "Grabando... 🎤",
@@ -126,11 +70,15 @@ export const AudioFeedback = () => {
   };
 
   const handleStopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
-      stopProgressAndTime();
+    if (state.mediaRecorderRef.current && state.isRecording) {
+      state.mediaRecorderRef.current.stop();
+      state.mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setters.setIsRecording(false);
+      stopProgressAndTime(
+        refs.progressInterval,
+        refs.timeInterval,
+        setters.setProgressValue
+      );
     }
   };
 
@@ -141,9 +89,13 @@ export const AudioFeedback = () => {
         message: "Subiendo archivo... 📤",
       });
       
-      startProgressAndTime();
+      startProgressAndTime(
+        setters.setProgressValue,
+        setters.setRecordingTime,
+        refs.progressInterval,
+        refs.timeInterval
+      );
       
-      // Convertir File a Blob para subir a Supabase
       const audioBlob = new Blob([file], { type: file.type });
       const publicUrl = await uploadToSupabase(audioBlob);
       
@@ -156,15 +108,25 @@ export const AudioFeedback = () => {
         message: "Archivo subido exitosamente, procesando... ⚙️",
       });
 
-      // Enviar la URL al webhook de Make
       const webhookSuccess = await sendToMakeWebhook(publicUrl);
       
       if (!webhookSuccess) {
         throw new Error('Error al procesar en Make');
       }
 
-      stopProgressAndTime();
-      startProcessingCountdown();
+      stopProgressAndTime(
+        refs.progressInterval,
+        refs.timeInterval,
+        setters.setProgressValue
+      );
+      
+      startProcessingCountdown(
+        setters.setIsProcessing,
+        setters.setProcessingTimeLeft,
+        refs.processingInterval,
+        setters.setAnalysisResult,
+        toast
+      );
 
       setFeedback({
         type: "positive",
@@ -173,7 +135,11 @@ export const AudioFeedback = () => {
 
     } catch (error) {
       console.error("Error en el proceso de subida:", error);
-      stopProgressAndTime();
+      stopProgressAndTime(
+        refs.progressInterval,
+        refs.timeInterval,
+        setters.setProgressValue
+      );
       setFeedback({
         type: "negative",
         message: "Error en el proceso ❌",
@@ -205,31 +171,24 @@ export const AudioFeedback = () => {
           <UploadButton onFileUpload={handleFileUpload} />
         </TabsContent>
         <TabsContent value="record">
-          <div className="text-center space-y-6">
-            <RecordButton 
-              isRecording={isRecording}
-              onToggleRecording={
-                isRecording 
-                  ? handleStopRecording 
-                  : handleStartRecording
-              }
-            />
-            {isRecording && (
-              <ProgressIndicator value={progressValue} time={recordingTime} />
-            )}
-          </div>
+          <RecordingControls 
+            isRecording={state.isRecording}
+            onToggleRecording={state.isRecording ? handleStopRecording : handleStartRecording}
+            progressValue={state.progressValue}
+            recordingTime={state.recordingTime}
+          />
         </TabsContent>
       </Tabs>
 
-      {(progressValue > 0 || isProcessing) && !analysisResult && (
+      {(state.progressValue > 0 || state.isProcessing) && !state.analysisResult && (
         <div className="mt-6 space-y-4">
-          {progressValue < 100 && (
-            <ProgressIndicator value={progressValue} />
+          {state.progressValue < 100 && (
+            <ProgressIndicator value={state.progressValue} />
           )}
           
-          {isProcessing && (
+          {state.isProcessing && (
             <ProcessingCountdown 
-              timeLeft={processingTimeLeft}
+              timeLeft={state.processingTimeLeft}
               onCancel={cancelProcessing}
             />
           )}
@@ -246,10 +205,10 @@ export const AudioFeedback = () => {
         </div>
       )}
 
-      {analysisResult && (
+      {state.analysisResult && (
         <div className="mt-6">
           <AnalysisResult
-            filename={analysisResult}
+            filename={state.analysisResult}
             onDownload={handleDownloadPDF}
           />
         </div>
