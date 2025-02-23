@@ -4,27 +4,45 @@ import { Button } from "../ui/button";
 import { useState } from "react";
 import { AudioFeedback } from "../AudioFeedback";
 
+interface WhatsappMessages {
+  new: string;
+  recurring: string;
+}
+
+interface PlanConfig {
+  name: string;
+  description: string;
+  handler: string;
+  maxDuration: number | null;
+  type: string;
+  whatsappMessages?: WhatsappMessages;
+}
+
+type PlanHandlers = {
+  [key: string]: PlanConfig;
+};
+
 // Configuración de la funcionalidad de cada plan
-const PLAN_HANDLERS = {
+const PLAN_HANDLERS: PlanHandlers = {
   BASIC: {
     name: "Básico",
     description: "Sube un archivo de audio y recibe un análisis detallado",
-    handler: "MAKE_WEBHOOK", // Indica que usa el webhook de Make
-    maxDuration: null, // Sin límite de duración para archivos
+    handler: "MAKE_WEBHOOK",
+    maxDuration: null,
     type: "upload"
   },
   MEDIUM: {
     name: "Medio",
     description: "Graba directamente y recibe feedback instantáneo",
-    handler: "ELEVEN_LABS", // Indica que usa ElevenLabs
-    maxDuration: 120, // 2 minutos en segundos
+    handler: "ELEVEN_LABS",
+    maxDuration: 120,
     type: "record"
   },
   PRO: {
     name: "Pro",
     description: "Análisis en tiempo real con consultoría personalizada",
-    handler: "ELEVEN_LABS", // Usa ElevenLabs con configuración especial
-    maxDuration: 600, // 10 minutos en segundos
+    handler: "ELEVEN_LABS",
+    maxDuration: 600,
     type: "record_realtime",
     whatsappMessages: {
       new: "¡Hola! 👋 Estoy interesado en el Plan Pro de análisis de ventas y me gustaría agendar una consultoría personalizada. 📊💡 ¿Podrías brindarme más información? ¡Gracias! 🙌",
@@ -86,13 +104,13 @@ export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   const handlePlanSelection = (planType: string) => {
-    const planConfig = PLAN_HANDLERS[planType as keyof typeof PLAN_HANDLERS];
+    const planConfig = PLAN_HANDLERS[planType];
     console.log(`Plan seleccionado: ${planConfig.name}`);
     console.log(`Tipo de handler: ${planConfig.handler}`);
     console.log(`Duración máxima: ${planConfig.maxDuration || 'Sin límite'}`);
     console.log(`Tipo de interacción: ${planConfig.type}`);
     
-    if (planType === 'PRO') {
+    if (planType === 'PRO' && planConfig.whatsappMessages) {
       const isRecurring = false; // Aquí podrías implementar la lógica para detectar clientes recurrentes
       const message = isRecurring 
         ? planConfig.whatsappMessages.recurring 
