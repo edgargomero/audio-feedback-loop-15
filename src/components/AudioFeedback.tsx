@@ -1,15 +1,27 @@
 
+<<<<<<< HEAD
 import { useState, useRef } from "react";
 import { Card } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useConversation } from "@11labs/react";
+=======
+import { useState, useRef, useEffect } from "react";
+import { Card } from "./ui/card";
+import { useToast } from "@/hooks/use-toast";
+>>>>>>> frontend/main
 import { RecordButton } from "./audio/RecordButton";
 import { UploadButton } from "./audio/UploadButton";
 import { FeedbackDisplay } from "./audio/FeedbackDisplay";
+import { ProcessingCountdown } from "./audio/ProcessingCountdown";
+import { ProgressIndicator } from "./audio/ProgressIndicator";
+import { AnalysisResult } from "./audio/AnalysisResult";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
+<<<<<<< HEAD
 import { Progress } from "./ui/progress";
 import { Button } from "./ui/button";
 import { FileDown } from "lucide-react";
+=======
+>>>>>>> frontend/main
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export const AudioFeedback = () => {
@@ -17,8 +29,16 @@ export const AudioFeedback = () => {
   const [progressValue, setProgressValue] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+<<<<<<< HEAD
   const progressInterval = useRef<NodeJS.Timeout>();
   const timeInterval = useRef<NodeJS.Timeout>();
+=======
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingTimeLeft, setProcessingTimeLeft] = useState(120);
+  const progressInterval = useRef<NodeJS.Timeout>();
+  const timeInterval = useRef<NodeJS.Timeout>();
+  const processingInterval = useRef<NodeJS.Timeout>();
+>>>>>>> frontend/main
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
@@ -26,11 +46,21 @@ export const AudioFeedback = () => {
 
   const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/fdfea2uux2sa7todteplybdudo45qpwm';
 
+<<<<<<< HEAD
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
+=======
+  useEffect(() => {
+    return () => {
+      if (progressInterval.current) clearInterval(progressInterval.current);
+      if (timeInterval.current) clearInterval(timeInterval.current);
+      if (processingInterval.current) clearInterval(processingInterval.current);
+    };
+  }, []);
+>>>>>>> frontend/main
 
   const startProgressAndTime = () => {
     setProgressValue(0);
@@ -40,6 +70,10 @@ export const AudioFeedback = () => {
       setProgressValue(prev => {
         if (prev >= 100) {
           clearInterval(progressInterval.current);
+<<<<<<< HEAD
+=======
+          startProcessingCountdown();
+>>>>>>> frontend/main
           return 100;
         }
         return prev + 1;
@@ -51,6 +85,7 @@ export const AudioFeedback = () => {
     }, 1000);
   };
 
+<<<<<<< HEAD
   const stopProgressAndTime = () => {
     if (progressInterval.current) {
       clearInterval(progressInterval.current);
@@ -60,6 +95,44 @@ export const AudioFeedback = () => {
     }
     setProgressValue(100);
   };
+=======
+  const startProcessingCountdown = () => {
+    setIsProcessing(true);
+    setProcessingTimeLeft(120);
+
+    processingInterval.current = setInterval(() => {
+      setProcessingTimeLeft(prev => {
+        if (prev <= 0) {
+          clearInterval(processingInterval.current);
+          setIsProcessing(false);
+          setAnalysisResult("analysis_result.pdf");
+          toast({
+            title: "¡Análisis completado!",
+            description: "PDF generado y listo para descargar ✅",
+          });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const stopProgressAndTime = () => {
+    if (progressInterval.current) clearInterval(progressInterval.current);
+    if (timeInterval.current) clearInterval(timeInterval.current);
+    setProgressValue(100);
+  };
+
+  const cancelProcessing = () => {
+    if (processingInterval.current) clearInterval(processingInterval.current);
+    setIsProcessing(false);
+    setProgressValue(0);
+    toast({
+      title: "Procesamiento cancelado",
+      description: "Se ha cancelado el procesamiento del audio",
+    });
+  };
+>>>>>>> frontend/main
 
   const handleStartRecording = async () => {
     try {
@@ -116,6 +189,7 @@ export const AudioFeedback = () => {
 
       if (response.ok) {
         stopProgressAndTime();
+<<<<<<< HEAD
         setTimeout(() => {
           setAnalysisResult("analysis_result.pdf");
           toast({
@@ -123,6 +197,8 @@ export const AudioFeedback = () => {
             description: "PDF generado y listo para descargar ✅",
           });
         }, 2000);
+=======
+>>>>>>> frontend/main
       } else {
         throw new Error('Error al enviar el archivo');
       }
@@ -162,6 +238,7 @@ export const AudioFeedback = () => {
               onToggleRecording={isRecording ? handleStopRecording : handleStartRecording}
             />
             {isRecording && (
+<<<<<<< HEAD
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
                   <span>Grabando...</span>
@@ -169,11 +246,32 @@ export const AudioFeedback = () => {
                 </div>
                 <Progress value={progressValue} className="h-2" />
               </div>
+=======
+              <ProgressIndicator value={progressValue} time={recordingTime} />
+>>>>>>> frontend/main
             )}
           </div>
         </TabsContent>
       </Tabs>
 
+<<<<<<< HEAD
+=======
+      {(progressValue > 0 || isProcessing) && !analysisResult && (
+        <div className="mt-6 space-y-4">
+          {progressValue < 100 && (
+            <ProgressIndicator value={progressValue} />
+          )}
+          
+          {isProcessing && (
+            <ProcessingCountdown 
+              timeLeft={processingTimeLeft}
+              onCancel={cancelProcessing}
+            />
+          )}
+        </div>
+      )}
+
+>>>>>>> frontend/main
       {feedback.message && (
         <div className="mt-6">
           <FeedbackDisplay 
@@ -185,6 +283,7 @@ export const AudioFeedback = () => {
       )}
 
       {analysisResult && (
+<<<<<<< HEAD
         <div className="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -203,6 +302,13 @@ export const AudioFeedback = () => {
               <span>Descargar</span>
             </Button>
           </div>
+=======
+        <div className="mt-6">
+          <AnalysisResult
+            filename={analysisResult}
+            onDownload={handleDownloadPDF}
+          />
+>>>>>>> frontend/main
         </div>
       )}
     </Card>
