@@ -1,18 +1,31 @@
+<<<<<<< HEAD
+
+import { Check, Upload, Mic, MessageSquare } from "lucide-react";
+=======
 import { Check, Upload, Mic, MessageSquare, FileDown } from "lucide-react";
+>>>>>>> frontend/main
+import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { useState, useRef, useEffect } from "react";
 import { AudioFeedback } from "../AudioFeedback";
+<<<<<<< HEAD
+=======
 import { ChatMessage } from "../chat/ChatMessage";
+>>>>>>> frontend/main
 import { useConversation } from "@11labs/react";
+import { uploadToSupabase } from "@/utils/uploadUtils";
+import { MAKE_WEBHOOK_URL } from "@/utils/constants";
 import { toast } from "@/components/ui/use-toast";
+import { useConversation } from "@11labs/react";
+<<<<<<< HEAD
+=======
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { UploadButton } from "../audio/UploadButton";
 import { RecordButton } from "../audio/RecordButton";
 import { ProcessingCountdown } from "../audio/ProcessingCountdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Card } from "../ui/card";
+>>>>>>> frontend/main
 
 interface WhatsappMessages {
   new: string;
@@ -90,7 +103,7 @@ const plans = [
     icon: Mic,
     buttonText: "Grabar y Analizar",
     recommended: true,
-    buttonColor: "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700",
+    buttonColor: "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700", // Cambiado a verde
     planType: "MEDIUM"
   },
   {
@@ -109,79 +122,17 @@ const plans = [
     planType: "PRO"
   }
 ];
-
-export const PricingCard = ({
-  name,
-  price,
-  description,
-  features,
-  icon: Icon,
-  buttonText,
-  buttonColor,
-  planType,
-  recommended,
-  onSelect,
-}: {
-  name: string;
-  price: string;
-  description: string;
-  features: string[];
-  icon: any;
-  buttonText: string;
-  buttonColor: string;
-  planType: string;
-  recommended?: boolean;
-  onSelect: (planType: string) => void;
-}) => {
-  return (
-    <Card 
-      className={`relative p-8 bg-[#1a1f2e] border-0 shadow-xl transition-all duration-300 hover:transform hover:scale-105 hover:shadow-2xl ${
-        recommended ? 'ring-2 ring-green-500' : ''
-      }`}
-    >
-      {recommended && (
-        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-          <span className="inline-block bg-gradient-to-r from-green-400 to-green-500 text-white px-4 py-1 text-sm font-semibold rounded-full shadow-lg">
-            Recomendado
-          </span>
-        </div>
-      )}
-      
-      <div className="text-center">
-        <div className="h-12 w-12 mx-auto mb-4 bg-gradient-to-br from-blue-400/20 to-blue-600/20 rounded-full flex items-center justify-center">
-          <Icon className="h-6 w-6 text-blue-500" />
-        </div>
-        <h3 className="text-2xl font-bold text-white mb-2">{name}</h3>
-        <div className="mb-4">
-          <span className="text-4xl font-bold text-white">${price}</span>
-          {name !== "Pro" && <span className="text-gray-400">/mes</span>}
-        </div>
-        <p className="text-gray-400 mb-6">{description}</p>
-      </div>
-
-      <ul className="space-y-4 mb-8">
-        {features.map((feature) => (
-          <li key={feature} className="flex items-start text-gray-300">
-            <Check className="h-5 w-5 text-green-500 mr-2 mt-1 flex-shrink-0" />
-            <span>{feature}</span>
-          </li>
-        ))}
-      </ul>
-
-      <Button 
-        className={`w-full py-6 text-lg font-semibold text-white transition-all duration-300 ${buttonColor} shadow-lg hover:shadow-xl`}
-        onClick={() => onSelect(planType)}
-      >
-        {buttonText}
-      </Button>
-    </Card>
-  );
-};
+import { UploadModal } from "./modals/UploadModal";
+import { AgentModal } from "./modals/AgentModal";
+import { PricingCard } from "./PricingCard";
+import { plans, PLAN_HANDLERS } from "@/config/planConfig";
 
 export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+<<<<<<< HEAD
+=======
   const [isRecording, setIsRecording] = useState(false);
   const [progressValue, setProgressValue] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -228,10 +179,18 @@ export const PricingCards = () => {
       });
     }, 1000);
   };
+>>>>>>> frontend/main
 
   const conversation = useConversation({
     onMessage: (message) => {
       console.log("Mensaje recibido:", message);
+<<<<<<< HEAD
+      if (message.type === "agent_response") {
+        toast({
+          title: "Respuesta del agente",
+          description: message.content,
+        });
+=======
       if (message.source === "ai") {
         setMessages(prev => [...prev, {
           text: message.message,
@@ -243,6 +202,7 @@ export const PricingCards = () => {
           text: message.message,
           isAgent: false
         }]);
+>>>>>>> frontend/main
       }
     },
     onError: (error) => {
@@ -255,6 +215,19 @@ export const PricingCards = () => {
     },
     onConnect: () => {
       console.log("Conexión establecida");
+<<<<<<< HEAD
+      toast({
+        title: "Conectado",
+        description: "Conexión establecida con el agente",
+      });
+    },
+  });
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type === "audio/mpeg" || file.type === "audio/mp3" || file.type === "audio/webm") {
+=======
       setMessages([{
         text: "¡Hola! Soy tu agente de análisis. ¿En qué puedo ayudarte?",
         isAgent: true
@@ -277,6 +250,7 @@ export const PricingCards = () => {
 
   const handleDownloadPDF = () => {
     if (pdfUrl) {
+      // Aquí iría la lógica real de descarga del PDF
       toast({
         title: "Descargando PDF",
         description: "Tu análisis se está descargando...",
@@ -309,12 +283,53 @@ export const PricingCards = () => {
 
   const handleFileUpload = (file: File) => {
     if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3" || file.type === "audio/webm")) {
-      console.log("Iniciando proceso de subida de archivo:", file.name);
-      
-      toast({
-        title: "Archivo recibido",
-        description: "Procesando el archivo de audio...",
-      });
+>>>>>>> frontend/main
+        console.log("Iniciando proceso de subida de archivo:", file.name);
+        
+        toast({
+          title: "Archivo recibido",
+          description: "Procesando el archivo de audio...",
+        });
+<<<<<<< HEAD
+        
+        const audioBlob = new Blob([file], { type: file.type });
+        uploadToSupabase(audioBlob)
+          .then((publicUrl) => {
+            if (publicUrl) {
+              console.log("Archivo subido exitosamente:", publicUrl);
+              const formData = new FormData();
+              formData.append('audioUrl', publicUrl);
+              
+              return fetch(MAKE_WEBHOOK_URL, {
+                method: 'POST',
+                body: formData
+              });
+            } else {
+              throw new Error('Error al subir el archivo a Supabase');
+            }
+          })
+          .then(response => {
+            if (!response?.ok) {
+              throw new Error('Error al procesar el audio en Make');
+            }
+            toast({
+              title: "¡Éxito!",
+              description: "Audio procesado correctamente ✅",
+            });
+          })
+          .catch((error) => {
+            console.error("Error en el proceso:", error);
+            toast({
+              title: "Error",
+              description: "Error al procesar el archivo ❌",
+              variant: "destructive",
+            });
+          });
+      } else {
+        toast({
+          title: "Error",
+          description: "Por favor selecciona un archivo de audio válido (MP3 o WebM)",
+=======
       
       let progress = 0;
       const interval = setInterval(() => {
@@ -330,9 +345,12 @@ export const PricingCards = () => {
       toast({
         title: "Error",
         description: "Por favor selecciona un archivo de audio válido (MP3 o WebM)",
-        variant: "destructive",
-      });
+>>>>>>> frontend/main
+          variant: "destructive",
+        });
+      }
     }
+    setIsUploadModalOpen(false);
   };
 
   const handleStartAgent = async () => {
@@ -355,6 +373,8 @@ export const PricingCards = () => {
     conversation.endSession();
     setIsAgentModalOpen(false);
   };
+<<<<<<< HEAD
+=======
 
   const handleStartRecording = async () => {
     try {
@@ -393,12 +413,14 @@ export const PricingCards = () => {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       setIsRecording(false);
+      // No cerramos el modal aquí
       toast({
         title: "Grabación finalizada",
         description: "Procesando audio...",
       });
     }
   };
+>>>>>>> frontend/main
 
   const handlePlanSelection = (planType: string) => {
     const planConfig = PLAN_HANDLERS[planType];
@@ -441,6 +463,43 @@ export const PricingCards = () => {
         ))}
       </div>
 
+<<<<<<< HEAD
+      {/* Modal de Subir Audio */}
+      <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Subir Archivo de Audio</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="audio-file" className="sr-only">
+                Seleccionar archivo
+              </label>
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex h-32 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+                  <label 
+                    htmlFor="audio-file" 
+                    className="flex flex-col items-center gap-2 cursor-pointer"
+                  >
+                    <Upload className="h-8 w-8 text-gray-500" />
+                    <span className="text-sm text-gray-500">
+                      Arrastra tu archivo aquí o haz click para seleccionar
+                    </span>
+                  </label>
+                  <Input
+                    id="audio-file"
+                    type="file"
+                    accept="audio/mpeg,audio/mp3"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+                <span className="text-xs text-gray-500">
+                  Formatos soportados: MP3 (máximo 10MB)
+                </span>
+              </div>
+            </div>
+=======
       <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -500,10 +559,15 @@ export const PricingCards = () => {
                 </Button>
               </div>
             )}
+>>>>>>> frontend/main
           </div>
         </DialogContent>
       </Dialog>
 
+<<<<<<< HEAD
+      {/* Modal del Agente */}
+=======
+>>>>>>> frontend/main
       <Dialog open={isAgentModalOpen} onOpenChange={(open) => {
         if (!open) handleStopAgent();
         setIsAgentModalOpen(open);
@@ -512,6 +576,16 @@ export const PricingCards = () => {
           <DialogHeader>
             <DialogTitle>Conversación con el Agente</DialogTitle>
           </DialogHeader>
+<<<<<<< HEAD
+          <div className="flex flex-col items-center gap-6 py-8">
+            <div className="text-center space-y-4">
+              <p className="text-sm text-gray-500">
+                El agente está escuchando. Habla para interactuar.
+              </p>
+              <Button 
+                onClick={handleStopAgent}
+                variant="destructive"
+=======
           <div className="flex flex-col gap-6">
             <ScrollArea className="h-[400px] p-4 rounded-md border">
               <div className="flex flex-col gap-4">
@@ -530,6 +604,7 @@ export const PricingCards = () => {
                 onClick={handleStopAgent}
                 variant="destructive"
                 className="w-full max-w-xs"
+>>>>>>> frontend/main
               >
                 Finalizar Conversación
               </Button>
