@@ -62,3 +62,4 @@ export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> 
     return null;
   }
 };
+
