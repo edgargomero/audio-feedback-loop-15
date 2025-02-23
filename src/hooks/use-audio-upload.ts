@@ -2,8 +2,7 @@
 import { useState } from "react";
 import { useToast } from "./use-toast";
 import { uploadToSupabase } from "../utils/uploadUtils";
-
-const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/fdfea2uux2sa7todteplybdudo45qpwm';
+import { MAKE_WEBHOOK_URL } from "@/utils/constants";
 
 export const useAudioUpload = () => {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
@@ -11,14 +10,10 @@ export const useAudioUpload = () => {
 
   const handleFileUpload = async (file: File) => {
     try {
-      // Convertir el archivo a Blob para Supabase
       const audioBlob = new Blob([file], { type: file.type });
-      
-      // Subir a Supabase y obtener la URL
       const publicUrl = await uploadToSupabase(audioBlob);
       
       if (publicUrl) {
-        // Si tenemos la URL de Supabase, enviamos a Make
         const formData = new FormData();
         formData.append('audioUrl', publicUrl);
         
