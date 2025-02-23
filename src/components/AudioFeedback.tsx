@@ -38,12 +38,19 @@ export const AudioFeedback = () => {
       state.audioChunksRef.current = [];
 
       state.mediaRecorderRef.current.ondataavailable = (event) => {
-        state.audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          state.audioChunksRef.current.push(event.data);
+        }
       };
 
       state.mediaRecorderRef.current.onstop = async () => {
         try {
+          if (state.audioChunksRef.current.length === 0) {
+            throw new Error('No se grabó ningún audio');
+          }
+
           const audioBlob = new Blob(state.audioChunksRef.current, { type: 'audio/webm' });
+          
           console.log('Audio grabado, preparando para subir:', {
             tipo: audioBlob.type,
             tamaño: audioBlob.size
@@ -62,6 +69,7 @@ export const AudioFeedback = () => {
 
           console.log('Audio subido, enviando a Make:', publicUrl);
           
+          // Enviamos directamente al webhook
           const webhookSuccess = await sendToMakeWebhook(publicUrl);
           
           if (!webhookSuccess) {
@@ -70,7 +78,7 @@ export const AudioFeedback = () => {
 
           setFeedback({
             type: "positive",
-            message: "Grabación procesada correctamente... ⚙️",
+            message: "Grabación enviada a procesar... ⚙️",
           });
 
           startProcessingCountdown(
@@ -160,7 +168,7 @@ export const AudioFeedback = () => {
 
       setFeedback({
         type: "positive",
-        message: "Archivo procesado correctamente... ⚙️",
+        message: "Archivo enviado a procesar... ⚙️",
       });
       
       startProcessingCountdown(
