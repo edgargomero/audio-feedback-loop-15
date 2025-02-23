@@ -5,6 +5,7 @@ import { Moon, Sun, Users, LineChart, Timer, CheckCircle2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { PricingCards } from "@/components/pricing/PricingCards";
 import { ActionButtons } from "@/components/ActionButtons";
+import { TestimonialsAndStats } from "@/components/TestimonialsAndStats";
 import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
@@ -76,6 +77,9 @@ const Index = () => {
             <LineChart className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Button>
         </div>
+
+        {/* Testimonials and Stats Section */}
+        <TestimonialsAndStats />
 
         {/* Pricing Section */}
         <PricingCards />
