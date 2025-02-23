@@ -1,6 +1,7 @@
 
 import { supabase } from "../integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { MAKE_WEBHOOK_URL } from "./constants";
 
 export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> => {
   const BUCKET_NAME = "audio_chunks";
@@ -61,8 +62,6 @@ export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> 
 };
 
 export const sendToMakeWebhook = async (audioUrl: string): Promise<boolean> => {
-  const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/fdfea2uux2sa7todteplybdudo45qpwm';
-
   try {
     console.log('Enviando URL al webhook:', audioUrl);
 
@@ -91,4 +90,3 @@ export const sendToMakeWebhook = async (audioUrl: string): Promise<boolean> => {
     return false;
   }
 };
-
