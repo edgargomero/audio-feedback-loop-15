@@ -42,9 +42,57 @@ export const AudioFeedback = () => {
       };
 
       state.mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(state.audioChunksRef.current, { type: 'audio/webm' });
-        const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
-        handleFileUpload(file);
+        try {
+          const audioBlob = new Blob(state.audioChunksRef.current, { type: 'audio/webm' });
+          console.log('Audio grabado, preparando para subir:', {
+            tipo: audioBlob.type,
+            tamaño: audioBlob.size
+          });
+          
+          setFeedback({
+            type: "neutral",
+            message: "Subiendo grabación... 📤",
+          });
+
+          const publicUrl = await uploadToSupabase(audioBlob);
+          
+          if (!publicUrl) {
+            throw new Error('Error al obtener la URL pública');
+          }
+
+          console.log('Audio subido, enviando a Make:', publicUrl);
+          
+          const webhookSuccess = await sendToMakeWebhook(publicUrl);
+          
+          if (!webhookSuccess) {
+            throw new Error('Error al procesar en Make');
+          }
+
+          setFeedback({
+            type: "positive",
+            message: "Grabación procesada correctamente... ⚙️",
+          });
+
+          startProcessingCountdown(
+            setters.setIsProcessing,
+            setters.setProcessingTimeLeft,
+            refs.processingInterval,
+            setters.setAnalysisResult,
+            toast
+          );
+
+        } catch (error) {
+          console.error('Error al procesar la grabación:', error);
+          setFeedback({
+            type: "negative",
+            message: "Error al procesar la grabación ❌",
+          });
+          toast({
+            title: "Error",
+            description: "Error al procesar la grabación",
+            variant: "destructive",
+          });
+        }
       };
 
       state.mediaRecorderRef.current.start();
@@ -89,36 +137,31 @@ export const AudioFeedback = () => {
         message: "Subiendo archivo... 📤",
       });
       
-      startProgressAndTime(
-        setters.setProgressValue,
-        setters.setRecordingTime,
-        refs.progressInterval,
-        refs.timeInterval
-      );
-      
       const audioBlob = new Blob([file], { type: file.type });
+      console.log('Iniciando subida de archivo:', {
+        nombre: file.name,
+        tipo: file.type,
+        tamaño: file.size
+      });
+      
       const publicUrl = await uploadToSupabase(audioBlob);
       
       if (!publicUrl) {
         throw new Error('Error al obtener la URL pública');
       }
 
-      setFeedback({
-        type: "positive",
-        message: "Archivo subido exitosamente, procesando... ⚙️",
-      });
-
+      console.log('Archivo subido, enviando a Make:', publicUrl);
+      
       const webhookSuccess = await sendToMakeWebhook(publicUrl);
       
       if (!webhookSuccess) {
         throw new Error('Error al procesar en Make');
       }
 
-      stopProgressAndTime(
-        refs.progressInterval,
-        refs.timeInterval,
-        setters.setProgressValue
-      );
+      setFeedback({
+        type: "positive",
+        message: "Archivo procesado correctamente... ⚙️",
+      });
       
       startProcessingCountdown(
         setters.setIsProcessing,
@@ -128,18 +171,8 @@ export const AudioFeedback = () => {
         toast
       );
 
-      setFeedback({
-        type: "positive",
-        message: "¡Archivo procesado correctamente! 🎉",
-      });
-
     } catch (error) {
       console.error("Error en el proceso de subida:", error);
-      stopProgressAndTime(
-        refs.progressInterval,
-        refs.timeInterval,
-        setters.setProgressValue
-      );
       setFeedback({
         type: "negative",
         message: "Error en el proceso ❌",
