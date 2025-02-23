@@ -1,16 +1,18 @@
 
 import { AudioFeedback } from "@/components/AudioFeedback";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, Users, LineChart, Timer, CheckCircle2 } from "lucide-react";
+import { Moon, Sun, Users, LineChart, Timer, CheckCircle2, ArrowUp } from "lucide-react";
 import { useTheme } from "next-themes";
 import { PricingCards } from "@/components/pricing/PricingCards";
 import { ActionButtons } from "@/components/ActionButtons";
 import { TestimonialsAndStats } from "@/components/TestimonialsAndStats";
 import { FAQ } from "@/components/FAQ";
 import { toast } from "@/components/ui/use-toast";
+import { useRef } from "react";
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
+  const pricingRef = useRef<HTMLDivElement>(null);
 
   const handleRecordClick = () => {
     toast({
@@ -28,6 +30,14 @@ const Index = () => {
 
   const handleConsultingClick = () => {
     window.open('https://wa.me/+34123456789?text=Hola,%20me%20interesa%20agendar%20una%20consultoría', '_blank');
+  };
+
+  const scrollToPricing = () => {
+    pricingRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -71,6 +81,7 @@ const Index = () => {
           <Button 
             size="lg" 
             className="bg-blue-700 hover:bg-blue-800 text-white px-10 py-6 rounded-lg text-lg font-semibold transition-all duration-200 hover:scale-105 hover:shadow-xl group"
+            onClick={scrollToPricing}
           >
             ¡Optimiza tus Ventas Ahora!
             <LineChart className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -81,7 +92,9 @@ const Index = () => {
         <TestimonialsAndStats />
 
         {/* Pricing Section */}
-        <PricingCards />
+        <div ref={pricingRef}>
+          <PricingCards />
+        </div>
 
         {/* FAQ Section */}
         <FAQ />
@@ -93,6 +106,16 @@ const Index = () => {
           onConsultingClick={handleConsultingClick}
         />
       </div>
+
+      {/* Botón flotante para volver arriba */}
+      <Button
+        variant="default"
+        size="icon"
+        className="fixed bottom-8 right-8 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 transition-all duration-300 animate-fade-in"
+        onClick={scrollToTop}
+      >
+        <ArrowUp className="h-5 w-5" />
+      </Button>
     </div>
   );
 };
