@@ -1,4 +1,3 @@
-
 import { Card } from "./ui/card";
 import { UploadButton } from "./audio/UploadButton";
 import { FeedbackDisplay } from "./audio/FeedbackDisplay";
@@ -69,8 +68,8 @@ export const AudioFeedback = () => {
 
           console.log('Audio subido, enviando a Make:', publicUrl);
           
-          // Enviamos directamente al webhook
-          const webhookSuccess = await sendToMakeWebhook(publicUrl);
+          // Especificamos que es una grabación
+          const webhookSuccess = await sendToMakeWebhook(publicUrl, true);
           
           if (!webhookSuccess) {
             throw new Error('Error al procesar en Make');
@@ -160,7 +159,8 @@ export const AudioFeedback = () => {
 
       console.log('Archivo subido, enviando a Make:', publicUrl);
       
-      const webhookSuccess = await sendToMakeWebhook(publicUrl);
+      // Especificamos que es una carga de archivo (isRecording = false)
+      const webhookSuccess = await sendToMakeWebhook(publicUrl, false);
       
       if (!webhookSuccess) {
         throw new Error('Error al procesar en Make');

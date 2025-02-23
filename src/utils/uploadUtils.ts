@@ -1,7 +1,6 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { MAKE_WEBHOOK_URL } from "./constants";
+import { MAKE_WEBHOOK_URL, MAKE_RECORDING_WEBHOOK_URL } from "./constants";
 
 export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> => {
   const BUCKET_NAME = "audio_chunks";
@@ -61,16 +60,20 @@ export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> 
   }
 };
 
-export const sendToMakeWebhook = async (audioUrl: string): Promise<boolean> => {
+export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean = false): Promise<boolean> => {
   try {
-    console.log('Enviando URL al webhook:', audioUrl);
+    const webhookUrl = isRecording ? MAKE_RECORDING_WEBHOOK_URL : MAKE_WEBHOOK_URL;
+    console.log(`Enviando URL al webhook (${isRecording ? 'grabación' : 'archivo'}):`, audioUrl);
 
-    const response = await fetch(MAKE_WEBHOOK_URL, {
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ audioUrl }),
+      body: JSON.stringify({ 
+        audioUrl,
+        source: isRecording ? 'recording' : 'upload'
+      }),
     });
 
     if (!response.ok) {
