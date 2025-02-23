@@ -149,8 +149,7 @@ export const PricingCards = () => {
     },
   });
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileUpload = (file: File) => {
     if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3" || file.type === "audio/webm")) {
       toast({
         title: "Archivo recibido",
@@ -219,13 +218,7 @@ export const PricingCards = () => {
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
-        
-        // Simular subida del archivo
-        handleFileUpload({
-          target: {
-            files: [file]
-          }
-        } as React.ChangeEvent<HTMLInputElement>);
+        handleFileUpload(file);
       };
 
       mediaRecorderRef.current.start();
@@ -346,11 +339,7 @@ export const PricingCards = () => {
                 <TabsTrigger value="record">Grabar Audio</TabsTrigger>
               </TabsList>
               <TabsContent value="upload" className="mt-4">
-                <UploadButton onFileUpload={(file) => {
-                  handleFileUpload({
-                    target: { files: [file] }
-                  } as React.ChangeEvent<HTMLInputElement>);
-                }} />
+                <UploadButton onFileUpload={handleFileUpload} />
               </TabsContent>
               <TabsContent value="record" className="mt-4">
                 <div className="flex flex-col items-center gap-4">
