@@ -30,3 +30,4 @@ export const ProgressIndicator = ({ value, time }: ProgressIndicatorProps) => {
     </div>
   );
 };
+
