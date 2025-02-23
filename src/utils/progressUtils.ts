@@ -109,7 +109,7 @@ export const stopProgressAndTime = (
   timeInterval: React.MutableRefObject<NodeJS.Timeout | undefined>,
   setProgressValue: (value: number) => void
 ) => {
-  if (progressInterval.current) clearInterval(processingInterval.current);
+  if (progressInterval.current) clearInterval(progressInterval.current); // Corregido aquí
   if (timeInterval.current) clearInterval(timeInterval.current);
   setProgressValue(0);
 };
