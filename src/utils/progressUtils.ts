@@ -3,7 +3,7 @@ import { SalesAnalysis } from "@/types/sales";
 
 export const startProcessingCountdown = (
   setIsProcessing: (value: boolean) => void,
-  setProcessingTimeLeft: React.Dispatch<React.SetStateAction<number>>, // Corregimos el tipo aquí
+  setProcessingTimeLeft: React.Dispatch<React.SetStateAction<number>>,
   processingInterval: React.MutableRefObject<NodeJS.Timeout | undefined>,
   setResult: (result: any) => void,
   toast: any
@@ -14,21 +14,22 @@ export const startProcessingCountdown = (
   // Simular espera y chequear resultado
   const checkResult = async () => {
     try {
-      // Aquí hacemos el fetch para obtener el resultado
       const response = await fetch('https://hook.us2.make.com/fdfea2uux2sa7todteplybdudo45qpwm');
       
       if (!response.ok) {
         throw new Error('Error al obtener el resultado');
       }
 
-      const result = await response.text(); // Cambiamos a text() en lugar de json()
+      const responseData = await response.json();
+      console.log('Respuesta del webhook:', responseData);
       
-      if (result) {
+      if (responseData && responseData.output) {
         if (processingInterval.current) {
           clearInterval(processingInterval.current);
         }
         setIsProcessing(false);
-        setResult(result);
+        // Enviamos directamente el HTML contenido en output
+        setResult(responseData.output);
         return true;
       }
       return false;
@@ -108,7 +109,7 @@ export const stopProgressAndTime = (
   timeInterval: React.MutableRefObject<NodeJS.Timeout | undefined>,
   setProgressValue: (value: number) => void
 ) => {
-  if (progressInterval.current) clearInterval(progressInterval.current);
+  if (progressInterval.current) clearInterval(processingInterval.current);
   if (timeInterval.current) clearInterval(timeInterval.current);
   setProgressValue(0);
 };
