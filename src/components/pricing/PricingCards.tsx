@@ -5,6 +5,31 @@ import { Button } from "../ui/button";
 import { useState } from "react";
 import { AudioFeedback } from "../AudioFeedback";
 
+// Configuración de la funcionalidad de cada plan
+const PLAN_HANDLERS = {
+  BASIC: {
+    name: "Básico",
+    description: "Sube un archivo de audio y recibe un análisis detallado",
+    handler: "MAKE_WEBHOOK", // Indica que usa el webhook de Make
+    maxDuration: null, // Sin límite de duración para archivos
+    type: "upload"
+  },
+  MEDIUM: {
+    name: "Medio",
+    description: "Graba directamente y recibe feedback instantáneo",
+    handler: "ELEVEN_LABS", // Indica que usa ElevenLabs
+    maxDuration: 120, // 2 minutos en segundos
+    type: "record"
+  },
+  PRO: {
+    name: "Pro",
+    description: "Análisis en tiempo real con consultoría personalizada",
+    handler: "ELEVEN_LABS", // Usa ElevenLabs con configuración especial
+    maxDuration: 600, // 10 minutos en segundos
+    type: "record_realtime"
+  }
+};
+
 const plans = [
   {
     name: "Básico",
@@ -18,7 +43,8 @@ const plans = [
     ],
     color: "bg-[#10B981]",
     buttonText: "Sube tu audio y obtén el informe",
-    buttonColor: "bg-blue-600 hover:bg-blue-700"
+    buttonColor: "bg-blue-600 hover:bg-blue-700",
+    planType: "BASIC"
   },
   {
     name: "Medio",
@@ -33,7 +59,8 @@ const plans = [
     color: "bg-[#FBBF24]",
     buttonText: "Graba y recibe análisis instantáneo",
     recommended: true,
-    buttonColor: "bg-blue-600 hover:bg-blue-700"
+    buttonColor: "bg-blue-600 hover:bg-blue-700",
+    planType: "MEDIUM"
   },
   {
     name: "Pro",
@@ -47,12 +74,23 @@ const plans = [
     ],
     color: "bg-[#EF4444]",
     buttonText: "Agenda tu consultoría",
-    buttonColor: "bg-blue-600 hover:bg-blue-700"
+    buttonColor: "bg-blue-600 hover:bg-blue-700",
+    planType: "PRO"
   }
 ];
 
 export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  const handlePlanSelection = (planType: string) => {
+    const planConfig = PLAN_HANDLERS[planType as keyof typeof PLAN_HANDLERS];
+    console.log(`Plan seleccionado: ${planConfig.name}`);
+    console.log(`Tipo de handler: ${planConfig.handler}`);
+    console.log(`Duración máxima: ${planConfig.maxDuration || 'Sin límite'}`);
+    console.log(`Tipo de interacción: ${planConfig.type}`);
+    
+    setSelectedPlan(planType);
+  };
 
   return (
     <div className="space-y-8">
@@ -92,7 +130,7 @@ export const PricingCards = () => {
 
             <Button 
               className={`w-full py-6 text-lg font-semibold ${plan.buttonColor} text-white transition-all duration-200`}
-              onClick={() => setSelectedPlan(plan.name)}
+              onClick={() => handlePlanSelection(plan.planType)}
             >
               {plan.buttonText}
             </Button>
