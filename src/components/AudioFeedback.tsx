@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useAudioRecorderState } from "../hooks/use-audio-recorder-state";
 import { startProgressAndTime, stopProgressAndTime, startProcessingCountdown } from "../utils/progressUtils";
 import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
+import { useState } from "react";
+import { EvaluationDisplay } from "./audio/EvaluationDisplay";
 
 export const AudioFeedback = () => {
   const { feedback, setFeedback } = useSalesAnalysis();
@@ -19,6 +21,7 @@ export const AudioFeedback = () => {
     refs,
     toast
   } = useAudioRecorderState();
+  const [evaluationHtml, setEvaluationHtml] = useState<string | null>(null);
 
   const cancelProcessing = () => {
     if (refs.processingInterval.current) clearInterval(refs.processingInterval.current);
@@ -171,11 +174,20 @@ export const AudioFeedback = () => {
         message: "Archivo enviado a procesar... ⚙️",
       });
       
+      // Iniciar el proceso de espera para la evaluación
       startProcessingCountdown(
         setters.setIsProcessing,
         setters.setProcessingTimeLeft,
         refs.processingInterval,
-        setters.setAnalysisResult,
+        (result) => {
+          // Aquí asumimos que el resultado es el HTML de la evaluación
+          if (typeof result === 'string' && result.includes('<!DOCTYPE html>')) {
+            setEvaluationHtml(result);
+            setters.setAnalysisResult(null); // No mostrar el resultado PDF
+          } else {
+            setters.setAnalysisResult(result);
+          }
+        },
         toast
       );
 
@@ -221,7 +233,7 @@ export const AudioFeedback = () => {
         </TabsContent>
       </Tabs>
 
-      {(state.progressValue > 0 || state.isProcessing) && !state.analysisResult && (
+      {(state.progressValue > 0 || state.isProcessing) && !state.analysisResult && !evaluationHtml && (
         <div className="mt-6 space-y-4">
           {state.progressValue < 100 && (
             <ProgressIndicator value={state.progressValue} />
@@ -236,7 +248,7 @@ export const AudioFeedback = () => {
         </div>
       )}
 
-      {feedback.message && (
+      {feedback.message && !evaluationHtml && (
         <div className="mt-6">
           <FeedbackDisplay 
             type={feedback.type}
@@ -246,7 +258,11 @@ export const AudioFeedback = () => {
         </div>
       )}
 
-      {state.analysisResult && (
+      {evaluationHtml && (
+        <EvaluationDisplay htmlContent={evaluationHtml} />
+      )}
+
+      {state.analysisResult && !evaluationHtml && (
         <div className="mt-6">
           <AnalysisResult
             filename={state.analysisResult}
