@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { PricingCards } from "@/components/pricing/PricingCards";
 import { ActionButtons } from "@/components/ActionButtons";
 import { TestimonialsAndStats } from "@/components/TestimonialsAndStats";
+import { FAQ } from "@/components/FAQ";
 import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
@@ -16,7 +17,6 @@ const Index = () => {
       title: "Inicializando grabación",
       description: "Preparando el sistema de grabación de audio...",
     });
-    // Aquí iría la lógica de grabación
   };
 
   const handleAnalysisClick = () => {
@@ -24,7 +24,6 @@ const Index = () => {
       title: "Análisis en Tiempo Real",
       description: "Conectando con el sistema de análisis...",
     });
-    // Aquí iría la lógica de análisis
   };
 
   const handleConsultingClick = () => {
@@ -83,6 +82,9 @@ const Index = () => {
 
         {/* Pricing Section */}
         <PricingCards />
+
+        {/* FAQ Section */}
+        <FAQ />
 
         {/* Action Buttons Section */}
         <ActionButtons 
