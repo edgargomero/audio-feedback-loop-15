@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import { Card } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
@@ -7,6 +8,7 @@ import { ExtraRecordButton } from "./audio/ExtraRecordButton";
 import { UploadButton } from "./audio/UploadButton";
 import { FeedbackDisplay } from "./audio/FeedbackDisplay";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
+import { uploadToSupabase } from "../utils/uploadUtils";
 
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
