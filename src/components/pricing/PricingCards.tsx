@@ -129,6 +129,7 @@ export const PricingCards = () => {
   const processingInterval = useRef<NodeJS.Timeout>();
   const [pdfReady, setPdfReady] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  
   const [messages, setMessages] = useState<Array<{
     text: string;
     isAgent: boolean;
@@ -169,15 +170,15 @@ export const PricingCards = () => {
   const conversation = useConversation({
     onMessage: (message) => {
       console.log("Mensaje recibido:", message);
-      if (message.type === "agent_response") {
+      if (message.source === "ai") {
         setMessages(prev => [...prev, {
-          text: message.content,
+          text: message.message,
           isAgent: true,
           feedback: feedbacks[Math.floor(Math.random() * feedbacks.length)]
         }]);
-      } else if (message.type === "transcription") {
+      } else if (message.source === "user") {
         setMessages(prev => [...prev, {
-          text: message.content,
+          text: message.message,
           isAgent: false
         }]);
       }
@@ -192,7 +193,7 @@ export const PricingCards = () => {
     },
     onConnect: () => {
       console.log("Conexión establecida");
-      setMessages(prev => [...prev, {
+      setMessages([{
         text: "¡Hola! Soy tu agente de análisis. ¿En qué puedo ayudarte?",
         isAgent: true
       }]);
