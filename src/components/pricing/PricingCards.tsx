@@ -1,4 +1,4 @@
-import { Check, Upload, Mic, MessageSquare } from "lucide-react";
+import { Check, Upload, Mic, MessageSquare, FileDown } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { useState, useRef, useEffect } from "react";
@@ -125,6 +125,8 @@ export const PricingCards = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingTimeLeft, setProcessingTimeLeft] = useState(120);
   const processingInterval = useRef<NodeJS.Timeout>();
+  const [pdfReady, setPdfReady] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const conversation = useConversation({
     onMessage: (message) => {
@@ -156,16 +158,20 @@ export const PricingCards = () => {
   const startProcessingCountdown = () => {
     setIsProcessing(true);
     setProcessingTimeLeft(120);
+    setPdfReady(false);
+    setPdfUrl(null);
 
     processingInterval.current = setInterval(() => {
       setProcessingTimeLeft(prev => {
         if (prev <= 0) {
           clearInterval(processingInterval.current);
           setIsProcessing(false);
-          setIsUploadModalOpen(false);
+          setPdfReady(true);
+          // Simulamos una URL del PDF - esto vendría del backend
+          setPdfUrl('https://ejemplo.com/analisis.pdf');
           toast({
             title: "¡Análisis completado!",
-            description: "PDF generado correctamente",
+            description: "PDF listo para descargar",
           });
           return 0;
         }
@@ -173,6 +179,53 @@ export const PricingCards = () => {
       });
     }, 1000);
   };
+
+  // Función para simular la interrupción desde el backend
+  const handleBackendReady = () => {
+    if (processingInterval.current) {
+      clearInterval(processingInterval.current);
+    }
+    setIsProcessing(false);
+    setPdfReady(true);
+    setPdfUrl('https://ejemplo.com/analisis.pdf');
+    toast({
+      title: "¡Análisis completado!",
+      description: "PDF generado correctamente",
+    });
+  };
+
+  const handleDownloadPDF = () => {
+    if (pdfUrl) {
+      // Aquí iría la lógica real de descarga del PDF
+      toast({
+        title: "Descargando PDF",
+        description: "Tu análisis se está descargando...",
+      });
+    }
+  };
+
+  const cancelProcessing = () => {
+    if (processingInterval.current) {
+      clearInterval(processingInterval.current);
+    }
+    setIsProcessing(false);
+    setProgressValue(0);
+    setProcessingTimeLeft(120);
+    setPdfReady(false);
+    setPdfUrl(null);
+    toast({
+      title: "Procesamiento cancelado",
+      description: "Se ha cancelado el procesamiento del audio",
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (processingInterval.current) {
+        clearInterval(processingInterval.current);
+      }
+    };
+  }, []);
 
   const handleFileUpload = (file: File) => {
     if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3" || file.type === "audio/webm")) {
@@ -199,27 +252,6 @@ export const PricingCards = () => {
       });
     }
   };
-
-  const cancelProcessing = () => {
-    if (processingInterval.current) {
-      clearInterval(processingInterval.current);
-    }
-    setIsProcessing(false);
-    setProgressValue(0);
-    setProcessingTimeLeft(120);
-    toast({
-      title: "Procesamiento cancelado",
-      description: "Se ha cancelado el procesamiento del audio",
-    });
-  };
-
-  useEffect(() => {
-    return () => {
-      if (processingInterval.current) {
-        clearInterval(processingInterval.current);
-      }
-    };
-  }, []);
 
   const handleStartAgent = async () => {
     try {
@@ -391,6 +423,7 @@ export const PricingCards = () => {
                 </div>
               </TabsContent>
             </Tabs>
+            
             {progressValue > 0 && progressValue < 100 && (
               <div className="space-y-2">
                 <Progress value={progressValue} />
@@ -399,12 +432,28 @@ export const PricingCards = () => {
                 </p>
               </div>
             )}
+            
             {isProcessing && (
               <div className="space-y-4">
                 <ProcessingCountdown
                   timeLeft={processingTimeLeft}
                   onCancel={cancelProcessing}
                 />
+              </div>
+            )}
+
+            {pdfReady && pdfUrl && (
+              <div className="flex flex-col items-center gap-4 pt-4">
+                <p className="text-sm text-green-600 font-medium">
+                  ¡Tu análisis está listo!
+                </p>
+                <Button
+                  onClick={handleDownloadPDF}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Descargar PDF
+                </Button>
               </div>
             )}
           </div>
