@@ -1,4 +1,3 @@
-
 import { AudioFeedback } from "@/components/AudioFeedback";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, Users, LineChart, Timer, CheckCircle2, ArrowUp } from "lucide-react";
@@ -78,6 +77,47 @@ const Index = () => {
 
         {/* FAQ Section */}
         <FAQ />
+
+        {/* Banner de cierre */}
+        <div className="mt-20 relative overflow-hidden rounded-2xl">
+          <div 
+            className="absolute inset-0 bg-cover bg-center z-0"
+            style={{
+              backgroundImage: "url('https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d')",
+              filter: "brightness(0.3)"
+            }}
+          />
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between px-8 py-16 bg-gradient-to-r from-blue-900/80 to-transparent">
+            <div className="text-white max-w-2xl mb-8 md:mb-0">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
+                Potencia tu Equipo Ahora y Lleva tus Ventas al Siguiente Nivel
+              </h2>
+              <p className="text-lg md:text-xl text-gray-200 mb-6">
+                Únete a los equipos que ya están transformando sus conversaciones en ventas exitosas con análisis inteligente en tiempo real.
+              </p>
+              <div className="flex gap-4 items-center">
+                <Button 
+                  size="lg" 
+                  className="bg-white text-blue-900 hover:bg-blue-50 px-8 py-6 text-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl"
+                  onClick={scrollToPricing}
+                >
+                  Comenzar Ahora
+                </Button>
+                <div className="flex items-center gap-2 text-sm text-gray-200">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span>14 días de prueba gratis</span>
+                </div>
+              </div>
+            </div>
+            <div className="hidden md:block">
+              <img 
+                src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158"
+                alt="Equipo trabajando"
+                className="w-80 h-80 object-cover rounded-lg shadow-2xl transform -rotate-3 hover:rotate-0 transition-transform duration-300"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Botón flotante para volver arriba */}
