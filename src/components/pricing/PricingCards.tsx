@@ -1,3 +1,4 @@
+
 import { Check, Upload, Mic, MessageSquare } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
@@ -8,11 +9,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
-import { RecordButton } from "../audio/RecordButton";
+import { useConversation } from "@11labs/react";
 
 interface WhatsappMessages {
   new: string;
@@ -113,8 +113,34 @@ const plans = [
 export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+
+  const conversation = useConversation({
+    onMessage: (message) => {
+      console.log("Mensaje recibido:", message);
+      if (message.type === "agent_response") {
+        toast({
+          title: "Respuesta del agente",
+          description: message.content,
+        });
+      }
+    },
+    onError: (error) => {
+      console.error("Error en la conversación:", error);
+      toast({
+        title: "Error",
+        description: "Error de conexión con el agente",
+        variant: "destructive",
+      });
+    },
+    onConnect: () => {
+      console.log("Conexión establecida");
+      toast({
+        title: "Conectado",
+        description: "Conexión establecida con el agente",
+      });
+    },
+  });
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -133,13 +159,11 @@ export const PricingCards = () => {
     }
   };
 
-  const handleStartRecording = async () => {
+  const handleStartAgent = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
-      setIsRecording(true);
-      toast({
-        title: "Grabación iniciada",
-        description: "Comenzando a grabar audio...",
+      conversation.startSession({
+        agentId: "DnScXfRTfQyBlJMBhfKb", // ID del agente de Eleven Labs
       });
     } catch (error) {
       console.error("Error al acceder al micrófono:", error);
@@ -151,12 +175,9 @@ export const PricingCards = () => {
     }
   };
 
-  const handleStopRecording = () => {
-    setIsRecording(false);
-    toast({
-      title: "Grabación finalizada",
-      description: "Procesando el audio...",
-    });
+  const handleStopAgent = () => {
+    conversation.endSession();
+    setIsAgentModalOpen(false);
   };
 
   const handlePlanSelection = (planType: string) => {
@@ -169,7 +190,8 @@ export const PricingCards = () => {
     }
     
     if (planType === 'MEDIUM') {
-      setIsRecordModalOpen(true);
+      setIsAgentModalOpen(true);
+      handleStartAgent();
       return;
     }
     
@@ -275,27 +297,32 @@ export const PricingCards = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Grabación */}
-      <Dialog open={isRecordModalOpen} onOpenChange={setIsRecordModalOpen}>
+      {/* Modal del Agente */}
+      <Dialog open={isAgentModalOpen} onOpenChange={(open) => {
+        if (!open) handleStopAgent();
+        setIsAgentModalOpen(open);
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Grabar Audio</DialogTitle>
+            <DialogTitle>Conversación con el Agente</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-6 py-8">
-            <RecordButton 
-              isRecording={isRecording}
-              onToggleRecording={isRecording ? handleStopRecording : handleStartRecording}
-            />
-            <p className="text-sm text-gray-500">
-              {isRecording 
-                ? "Haz clic para detener la grabación" 
-                : "Haz clic para empezar a grabar"}
-            </p>
+            <div className="text-center space-y-4">
+              <p className="text-sm text-gray-500">
+                El agente está escuchando. Habla para interactuar.
+              </p>
+              <Button 
+                onClick={handleStopAgent}
+                variant="destructive"
+              >
+                Finalizar Conversación
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {selectedPlan && selectedPlan !== 'BASIC' && !isRecordModalOpen && (
+      {selectedPlan && selectedPlan !== 'BASIC' && !isAgentModalOpen && (
         <div className="mt-12 animate-fade-in">
           <AudioFeedback />
         </div>
