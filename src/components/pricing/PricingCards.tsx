@@ -1,8 +1,18 @@
+
 import { Check, Upload, Mic, MessageSquare } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { useState } from "react";
 import { AudioFeedback } from "../AudioFeedback";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/use-toast";
 
 interface WhatsappMessages {
   new: string;
@@ -102,16 +112,36 @@ const plans = [
 
 export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3")) {
+      toast({
+        title: "Archivo recibido",
+        description: "Procesando el archivo de audio...",
+      });
+      setIsUploadModalOpen(false);
+    } else {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona un archivo de audio válido (MP3)",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handlePlanSelection = (planType: string) => {
     const planConfig = PLAN_HANDLERS[planType];
     console.log(`Plan seleccionado: ${planConfig.name}`);
-    console.log(`Tipo de handler: ${planConfig.handler}`);
-    console.log(`Duración máxima: ${planConfig.maxDuration || 'Sin límite'}`);
-    console.log(`Tipo de interacción: ${planConfig.type}`);
+    
+    if (planType === 'BASIC') {
+      setIsUploadModalOpen(true);
+      return;
+    }
     
     if (planType === 'PRO' && planConfig.whatsappMessages) {
-      const isRecurring = false; // Aquí podrías implementar la lógica para detectar clientes recurrentes
+      const isRecurring = false;
       const message = isRecurring 
         ? planConfig.whatsappMessages.recurring 
         : planConfig.whatsappMessages.new;
@@ -173,7 +203,46 @@ export const PricingCards = () => {
         ))}
       </div>
 
-      {selectedPlan && (
+      {/* Modal de Subir Audio */}
+      <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Subir Archivo de Audio</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="audio-file" className="sr-only">
+                Seleccionar archivo
+              </label>
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex h-32 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+                  <label 
+                    htmlFor="audio-file" 
+                    className="flex flex-col items-center gap-2 cursor-pointer"
+                  >
+                    <Upload className="h-8 w-8 text-gray-500" />
+                    <span className="text-sm text-gray-500">
+                      Arrastra tu archivo aquí o haz click para seleccionar
+                    </span>
+                  </label>
+                  <Input
+                    id="audio-file"
+                    type="file"
+                    accept="audio/mpeg,audio/mp3"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+                <span className="text-xs text-gray-500">
+                  Formatos soportados: MP3 (máximo 10MB)
+                </span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {selectedPlan && selectedPlan !== 'BASIC' && (
         <div className="mt-12 animate-fade-in">
           <AudioFeedback />
         </div>
