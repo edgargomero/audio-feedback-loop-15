@@ -4,9 +4,31 @@ import { Button } from "@/components/ui/button";
 import { Moon, Sun, Users, LineChart, Timer, CheckCircle2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { PricingCards } from "@/components/pricing/PricingCards";
+import { ActionButtons } from "@/components/ActionButtons";
+import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
+
+  const handleRecordClick = () => {
+    toast({
+      title: "Inicializando grabación",
+      description: "Preparando el sistema de grabación de audio...",
+    });
+    // Aquí iría la lógica de grabación
+  };
+
+  const handleAnalysisClick = () => {
+    toast({
+      title: "Análisis en Tiempo Real",
+      description: "Conectando con el sistema de análisis...",
+    });
+    // Aquí iría la lógica de análisis
+  };
+
+  const handleConsultingClick = () => {
+    window.open('https://wa.me/+34123456789?text=Hola,%20me%20interesa%20agendar%20una%20consultoría', '_blank');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
@@ -57,6 +79,13 @@ const Index = () => {
 
         {/* Pricing Section */}
         <PricingCards />
+
+        {/* Action Buttons Section */}
+        <ActionButtons 
+          onRecordClick={handleRecordClick}
+          onAnalysisClick={handleAnalysisClick}
+          onConsultingClick={handleConsultingClick}
+        />
       </div>
     </div>
   );
