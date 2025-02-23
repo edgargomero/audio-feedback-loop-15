@@ -16,8 +16,9 @@ const plans = [
       "Recomendaciones automáticas",
       "Exportación de resultados"
     ],
-    color: "bg-green-500",
-    buttonText: "Sube tu audio y obtén el informe"
+    color: "bg-[#10B981]",
+    buttonText: "Sube tu audio y obtén el informe",
+    buttonColor: "bg-blue-600 hover:bg-blue-700"
   },
   {
     name: "Medio",
@@ -29,9 +30,10 @@ const plans = [
       "Informe detallado con insights",
       "2 minutos por grabación"
     ],
-    color: "bg-yellow-500",
+    color: "bg-[#FBBF24]",
     buttonText: "Graba y recibe análisis instantáneo",
-    recommended: true
+    recommended: true,
+    buttonColor: "bg-blue-600 hover:bg-blue-700"
   },
   {
     name: "Pro",
@@ -43,8 +45,9 @@ const plans = [
       "Feedback durante la llamada",
       "Sesión de consultoría estratégica"
     ],
-    color: "bg-red-500",
-    buttonText: "Agenda tu consultoría"
+    color: "bg-[#EF4444]",
+    buttonText: "Agenda tu consultoría",
+    buttonColor: "bg-blue-600 hover:bg-blue-700"
   }
 ];
 
@@ -57,7 +60,7 @@ export const PricingCards = () => {
         {plans.map((plan) => (
           <Card 
             key={plan.name}
-            className={`relative p-8 bg-white dark:bg-gray-800 shadow-xl transition-all duration-200 hover:scale-105 ${
+            className={`relative p-8 bg-[#1a1f2e] border-0 shadow-xl transition-all duration-200 hover:scale-105 ${
               plan.recommended ? 'ring-2 ring-blue-500' : ''
             }`}
           >
@@ -70,25 +73,25 @@ export const PricingCards = () => {
             )}
             
             <div className="text-center">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{plan.name}</h3>
+              <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
               <div className="mb-4">
-                <span className="text-4xl font-bold text-gray-900 dark:text-white">${plan.price}</span>
-                {plan.name !== "Pro" && <span className="text-gray-600 dark:text-gray-400">/mes</span>}
+                <span className="text-4xl font-bold text-white">${plan.price}</span>
+                {plan.name !== "Pro" && <span className="text-gray-400">/mes</span>}
               </div>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">{plan.description}</p>
+              <p className="text-gray-400 mb-6">{plan.description}</p>
             </div>
 
             <ul className="space-y-4 mb-8">
               {plan.features.map((feature) => (
-                <li key={feature} className="flex items-center text-gray-600 dark:text-gray-400">
-                  <Check className="h-5 w-5 text-green-500 mr-2" />
-                  {feature}
+                <li key={feature} className="flex items-start text-gray-300">
+                  <Check className="h-5 w-5 text-green-500 mr-2 mt-1 flex-shrink-0" />
+                  <span>{feature}</span>
                 </li>
               ))}
             </ul>
 
             <Button 
-              className="w-full py-6 text-lg font-semibold transition-colors duration-200"
+              className={`w-full py-6 text-lg font-semibold ${plan.buttonColor} text-white transition-all duration-200`}
               onClick={() => setSelectedPlan(plan.name)}
             >
               {plan.buttonText}
