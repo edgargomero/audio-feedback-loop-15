@@ -4,33 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Moon, Sun, Users, LineChart, Timer, CheckCircle2, ArrowUp } from "lucide-react";
 import { useTheme } from "next-themes";
 import { PricingCards } from "@/components/pricing/PricingCards";
-import { ActionButtons } from "@/components/ActionButtons";
 import { TestimonialsAndStats } from "@/components/TestimonialsAndStats";
 import { FAQ } from "@/components/FAQ";
-import { toast } from "@/components/ui/use-toast";
 import { useRef } from "react";
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
   const pricingRef = useRef<HTMLDivElement>(null);
-
-  const handleRecordClick = () => {
-    toast({
-      title: "Inicializando grabación",
-      description: "Preparando el sistema de grabación de audio...",
-    });
-  };
-
-  const handleAnalysisClick = () => {
-    toast({
-      title: "Análisis en Tiempo Real",
-      description: "Conectando con el sistema de análisis...",
-    });
-  };
-
-  const handleConsultingClick = () => {
-    window.open('https://wa.me/+34123456789?text=Hola,%20me%20interesa%20agendar%20una%20consultoría', '_blank');
-  };
 
   const scrollToPricing = () => {
     pricingRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -98,13 +78,6 @@ const Index = () => {
 
         {/* FAQ Section */}
         <FAQ />
-
-        {/* Action Buttons Section */}
-        <ActionButtons 
-          onRecordClick={handleRecordClick}
-          onAnalysisClick={handleAnalysisClick}
-          onConsultingClick={handleConsultingClick}
-        />
       </div>
 
       {/* Botón flotante para volver arriba */}
