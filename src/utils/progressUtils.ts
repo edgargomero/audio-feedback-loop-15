@@ -1,65 +1,113 @@
-
-export const startProgressAndTime = (
-  setProgressValue: (value: number) => void,
-  setRecordingTime: (value: number) => void,
-  progressInterval: { current: NodeJS.Timeout | undefined },
-  timeInterval: { current: NodeJS.Timeout | undefined }
-) => {
-  setProgressValue(0);
-  setRecordingTime(0);
-  
-  let currentProgress = 0;
-  progressInterval.current = setInterval(() => {
-    currentProgress += 1;
-    if (currentProgress <= 100) {
-      setProgressValue(currentProgress);
-    } else {
-      clearInterval(progressInterval.current);
-      setProgressValue(100);
-    }
-  }, 100);
-
-  let currentTime = 0;
-  timeInterval.current = setInterval(() => {
-    currentTime += 1;
-    setRecordingTime(currentTime);
-  }, 1000);
-};
-
-export const stopProgressAndTime = (
-  progressInterval: { current: NodeJS.Timeout | undefined },
-  timeInterval: { current: NodeJS.Timeout | undefined },
-  setProgressValue: (value: number) => void
-) => {
-  if (progressInterval.current) clearInterval(progressInterval.current);
-  if (timeInterval.current) clearInterval(timeInterval.current);
-  setProgressValue(100);
-};
+import { SalesAnalysis } from "@/types/sales";
 
 export const startProcessingCountdown = (
   setIsProcessing: (value: boolean) => void,
   setProcessingTimeLeft: (value: number) => void,
-  processingInterval: { current: NodeJS.Timeout | undefined },
-  setAnalysisResult: (value: string | null) => void,
+  processingInterval: React.MutableRefObject<NodeJS.Timeout | undefined>,
+  setResult: (result: any) => void,
   toast: any
 ) => {
   setIsProcessing(true);
   setProcessingTimeLeft(120);
 
-  let timeLeft = 120;
-  processingInterval.current = setInterval(() => {
-    timeLeft -= 1;
-    if (timeLeft <= 0) {
-      clearInterval(processingInterval.current);
-      setIsProcessing(false);
-      setAnalysisResult("analysis_result.pdf");
-      toast({
-        title: "¡Análisis completado!",
-        description: "PDF generado y listo para descargar ✅",
-      });
-      setProcessingTimeLeft(0);
-    } else {
-      setProcessingTimeLeft(timeLeft);
+  // Simular espera y chequear resultado
+  const checkResult = async () => {
+    try {
+      // Aquí hacemos el fetch para obtener el resultado
+      const response = await fetch('https://hook.us2.make.com/fdfea2uux2sa7todteplybdudo45qpwm');
+      
+      if (!response.ok) {
+        throw new Error('Error al obtener el resultado');
+      }
+
+      const result = await response.text(); // Cambiamos a text() en lugar de json()
+      
+      if (result) {
+        if (processingInterval.current) {
+          clearInterval(processingInterval.current);
+        }
+        setIsProcessing(false);
+        setResult(result);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error al obtener resultado:', error);
+      return false;
+    }
+  };
+
+  let attempts = 0;
+  processingInterval.current = setInterval(async () => {
+    attempts++;
+    
+    // Actualizar tiempo restante
+    setProcessingTimeLeft((prev) => {
+      if (prev <= 1) {
+        if (processingInterval.current) {
+          clearInterval(processingInterval.current);
+        }
+        setIsProcessing(false);
+        toast({
+          title: "Tiempo agotado",
+          description: "No se pudo obtener el resultado en el tiempo esperado",
+          variant: "destructive",
+        });
+        return 0;
+      }
+      return prev - 1;
+    });
+
+    // Intentar obtener resultado
+    const success = await checkResult();
+    if (success || attempts >= 120) {
+      if (processingInterval.current) {
+        clearInterval(processingInterval.current);
+      }
+      if (!success && attempts >= 120) {
+        setIsProcessing(false);
+        toast({
+          title: "Tiempo agotado",
+          description: "No se pudo obtener el resultado en el tiempo esperado",
+          variant: "destructive",
+        });
+      }
     }
   }, 1000);
+};
+
+export const startProgressAndTime = (
+  setProgressValue: (value: number) => void,
+  setRecordingTime: (value: number) => void,
+  progressInterval: React.MutableRefObject<NodeJS.Timeout | undefined>,
+  timeInterval: React.MutableRefObject<NodeJS.Timeout | undefined>
+) => {
+  setProgressValue(0);
+  setRecordingTime(0);
+
+  let progress = 0;
+  progressInterval.current = setInterval(() => {
+    progress += 1;
+    setProgressValue(progress);
+
+    if (progress >= 100) {
+      clearInterval(progressInterval.current);
+    }
+  }, 500);
+
+  let time = 0;
+  timeInterval.current = setInterval(() => {
+    time += 1;
+    setRecordingTime(time);
+  }, 1000);
+};
+
+export const stopProgressAndTime = (
+  progressInterval: React.MutableRefObject<NodeJS.Timeout | undefined>,
+  timeInterval: React.MutableRefObject<NodeJS.Timeout | undefined>,
+  setProgressValue: (value: number) => void
+) => {
+  if (progressInterval.current) clearInterval(progressInterval.current);
+  if (timeInterval.current) clearInterval(timeInterval.current);
+  setProgressValue(0);
 };

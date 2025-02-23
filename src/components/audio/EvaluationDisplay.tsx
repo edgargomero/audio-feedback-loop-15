@@ -19,9 +19,9 @@ export const EvaluationDisplay = ({ htmlContent }: EvaluationDisplayProps) => {
     <div className="w-full mt-6">
       <iframe
         ref={iframeRef}
-        className="w-full min-h-[600px] border rounded-lg"
+        className="w-full min-h-[600px] border rounded-lg bg-white"
         title="Evaluación de llamada"
-        sandbox="allow-same-origin"
+        sandbox="allow-same-origin allow-scripts"
       />
     </div>
   );
