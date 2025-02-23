@@ -10,7 +10,7 @@ export const uploadToSupabase = async (audioBlob: Blob) => {
       bucketName: BUCKET_NAME,
       blobTipo: audioBlob.type,
       blobTamaño: audioBlob.size,
-      supabaseURL: supabase.storageUrl,
+      // Removed supabaseURL as it's a protected property
     });
 
     // Generar un nombre único para el archivo
@@ -45,7 +45,7 @@ export const uploadToSupabase = async (audioBlob: Blob) => {
       console.error('Error al subir a Supabase:', {
         error: uploadError,
         detalles: uploadError.message,
-        código: uploadError.statusCode,
+        // Removed statusCode as it doesn't exist in StorageError type
       });
       toast({
         title: "Error",
