@@ -1,11 +1,6 @@
 
-<<<<<<< HEAD
-import { Card } from "./ui/card";
-=======
 import { useState, useRef, useEffect } from "react";
 import { Card } from "./ui/card";
-import { useToast } from "@/hooks/use-toast";
->>>>>>> frontend/main
 import { RecordButton } from "./audio/RecordButton";
 import { UploadButton } from "./audio/UploadButton";
 import { FeedbackDisplay } from "./audio/FeedbackDisplay";
@@ -13,30 +8,19 @@ import { ProcessingCountdown } from "./audio/ProcessingCountdown";
 import { ProgressIndicator } from "./audio/ProgressIndicator";
 import { AnalysisResult } from "./audio/AnalysisResult";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
-<<<<<<< HEAD
-=======
->>>>>>> frontend/main
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { RecordingProgress } from "./audio/RecordingProgress";
-import { AnalysisResult } from "./audio/AnalysisResult";
-import { useAudioRecorder } from "../hooks/use-audio-recorder";
-import { useAudioUpload } from "../hooks/use-audio-upload";
+import { useToast } from "@/hooks/use-toast";
 
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [progressValue, setProgressValue] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
-<<<<<<< HEAD
-  const progressInterval = useRef<NodeJS.Timeout>();
-  const timeInterval = useRef<NodeJS.Timeout>();
-=======
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingTimeLeft, setProcessingTimeLeft] = useState(120);
   const progressInterval = useRef<NodeJS.Timeout>();
   const timeInterval = useRef<NodeJS.Timeout>();
   const processingInterval = useRef<NodeJS.Timeout>();
->>>>>>> frontend/main
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
@@ -44,13 +28,6 @@ export const AudioFeedback = () => {
 
   const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/fdfea2uux2sa7todteplybdudo45qpwm';
 
-<<<<<<< HEAD
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-=======
   useEffect(() => {
     return () => {
       if (progressInterval.current) clearInterval(progressInterval.current);
@@ -58,7 +35,6 @@ export const AudioFeedback = () => {
       if (processingInterval.current) clearInterval(processingInterval.current);
     };
   }, []);
->>>>>>> frontend/main
 
   const startProgressAndTime = () => {
     setProgressValue(0);
@@ -68,10 +44,7 @@ export const AudioFeedback = () => {
       setProgressValue(prev => {
         if (prev >= 100) {
           clearInterval(progressInterval.current);
-<<<<<<< HEAD
-=======
           startProcessingCountdown();
->>>>>>> frontend/main
           return 100;
         }
         return prev + 1;
@@ -83,17 +56,6 @@ export const AudioFeedback = () => {
     }, 1000);
   };
 
-<<<<<<< HEAD
-  const stopProgressAndTime = () => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-    }
-    if (timeInterval.current) {
-      clearInterval(timeInterval.current);
-    }
-    setProgressValue(100);
-  };
-=======
   const startProcessingCountdown = () => {
     setIsProcessing(true);
     setProcessingTimeLeft(120);
@@ -130,7 +92,6 @@ export const AudioFeedback = () => {
       description: "Se ha cancelado el procesamiento del audio",
     });
   };
->>>>>>> frontend/main
 
   const handleStartRecording = async () => {
     try {
@@ -185,21 +146,10 @@ export const AudioFeedback = () => {
         body: formData
       });
 
-      if (response.ok) {
-        stopProgressAndTime();
-<<<<<<< HEAD
-        setTimeout(() => {
-          setAnalysisResult("analysis_result.pdf");
-          toast({
-            title: "¡Análisis completado!",
-            description: "PDF generado y listo para descargar ✅",
-          });
-        }, 2000);
-=======
->>>>>>> frontend/main
-      } else {
+      if (!response.ok) {
         throw new Error('Error al enviar el archivo');
       }
+      stopProgressAndTime();
     } catch (error) {
       console.error("Error al procesar el archivo:", error);
       stopProgressAndTime();
@@ -217,20 +167,6 @@ export const AudioFeedback = () => {
       description: "Iniciando descarga del análisis...",
     });
   };
-  const { feedback } = useSalesAnalysis();
-  const {
-    isRecording,
-    progressValue,
-    recordingTime,
-    formatTime,
-    handleStartRecording,
-    handleStopRecording,
-  } = useAudioRecorder();
-  const {
-    analysisResult,
-    handleFileUpload,
-    handleDownloadPDF,
-  } = useAudioUpload();
 
   return (
     <Card className="p-6 max-w-3xl mx-auto mt-10 shadow-lg bg-white dark:bg-gray-800">
@@ -250,26 +186,16 @@ export const AudioFeedback = () => {
               onToggleRecording={
                 isRecording 
                   ? handleStopRecording 
-                  : () => handleStartRecording(handleFileUpload)
+                  : handleStartRecording
               }
             />
             {isRecording && (
-<<<<<<< HEAD
-              <RecordingProgress
-                progressValue={progressValue}
-                recordingTime={recordingTime}
-                formatTime={formatTime}
-              />
-=======
               <ProgressIndicator value={progressValue} time={recordingTime} />
->>>>>>> frontend/main
             )}
           </div>
         </TabsContent>
       </Tabs>
 
-<<<<<<< HEAD
-=======
       {(progressValue > 0 || isProcessing) && !analysisResult && (
         <div className="mt-6 space-y-4">
           {progressValue < 100 && (
@@ -285,7 +211,6 @@ export const AudioFeedback = () => {
         </div>
       )}
 
->>>>>>> frontend/main
       {feedback.message && (
         <div className="mt-6">
           <FeedbackDisplay 
@@ -297,37 +222,12 @@ export const AudioFeedback = () => {
       )}
 
       {analysisResult && (
-<<<<<<< HEAD
-        <div className="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <FileDown className="h-5 w-5 text-blue-500" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {analysisResult}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadPDF}
-              className="flex items-center space-x-2"
-            >
-              <FileDown className="h-4 w-4" />
-              <span>Descargar</span>
-            </Button>
-          </div>
-=======
         <div className="mt-6">
           <AnalysisResult
             filename={analysisResult}
             onDownload={handleDownloadPDF}
           />
->>>>>>> frontend/main
         </div>
-        <AnalysisResult 
-          analysisResult={analysisResult}
-          onDownload={handleDownloadPDF}
-        />
       )}
     </Card>
   );
