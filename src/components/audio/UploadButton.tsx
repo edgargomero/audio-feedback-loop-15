@@ -27,9 +27,15 @@ export const UploadButton = ({ onFileUpload }: UploadButtonProps) => {
           tipo: file.type,
           tamaño: file.size
         });
+        
+        // Validar tipo de archivo
+        const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave', 'audio/ogg', 'audio/aac', 'audio/m4a'];
+        if (!allowedTypes.includes(file.type)) {
+          throw new Error('Formato de audio no soportado. Por favor, use MP3, WAV, OGG, AAC o M4A.');
+        }
 
-        // Convertir File a Blob
-        const audioBlob = new Blob([file], { type: file.type });
+        // Usar el archivo directamente sin convertir
+        const audioBlob = file;
         
         // Subir a Supabase
         const publicUrl = await uploadToSupabase(audioBlob);
@@ -59,7 +65,7 @@ export const UploadButton = ({ onFileUpload }: UploadButtonProps) => {
         console.error('Error en el proceso de subida:', error);
         toast({
           title: "Error",
-          description: "No se pudo procesar el archivo",
+          description: error instanceof Error ? error.message : "No se pudo procesar el archivo",
           variant: "destructive",
         });
       }

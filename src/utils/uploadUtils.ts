@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { MAKE_WEBHOOK_URL, MAKE_RECORDING_WEBHOOK_URL } from "./constants";
@@ -12,10 +13,10 @@ export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> 
       blobTamaño: audioBlob.size
     });
 
-    // Generate unique filename
+    // Generate unique filename with correct extension based on MIME type
     const timestamp = new Date().getTime();
     const randomString = Math.random().toString(36).substring(7);
-    const fileExtension = audioBlob.type.includes('mp3') ? 'mp3' : 'webm';
+    const fileExtension = getFileExtension(audioBlob.type);
     const fileName = `audio-${timestamp}-${randomString}.${fileExtension}`;
 
     console.log('Preparando subida con nombre de archivo:', fileName);
@@ -60,6 +61,22 @@ export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> 
   }
 };
 
+// Función auxiliar para determinar la extensión del archivo
+const getFileExtension = (mimeType: string): string => {
+  const mimeToExt: { [key: string]: string } = {
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/wav': 'wav',
+    'audio/wave': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/aac': 'aac',
+    'audio/m4a': 'm4a',
+    'audio/webm': 'webm'
+  };
+
+  return mimeToExt[mimeType] || 'mp3'; // Por defecto mp3 si no se reconoce el tipo
+};
+
 export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean = false): Promise<boolean> => {
   try {
     const webhookUrl = isRecording ? MAKE_RECORDING_WEBHOOK_URL : MAKE_WEBHOOK_URL;
@@ -93,3 +110,4 @@ export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean =
     return false;
   }
 };
+
