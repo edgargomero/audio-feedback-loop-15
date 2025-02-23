@@ -10,7 +10,6 @@ import { AnalysisResult } from "./audio/AnalysisResult";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { uploadToSupabase } from "@/utils/uploadUtils";
 
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -139,19 +138,8 @@ export const AudioFeedback = () => {
   const handleFileUpload = async (file: File) => {
     try {
       startProgressAndTime();
-      
-      // Primero subimos a Supabase
-      const publicUrl = await uploadToSupabase(new Blob([file], { type: file.type }));
-      
-      if (!publicUrl) {
-        throw new Error('Error al subir archivo a Supabase');
-      }
-
-      // Luego enviamos a Make webhook
       const formData = new FormData();
-      formData.append('audioUrl', publicUrl);
-      
-      console.log('Enviando URL al webhook:', publicUrl);
+      formData.append('audio', file);
       
       const response = await fetch(MAKE_WEBHOOK_URL, {
         method: 'POST',
@@ -161,21 +149,13 @@ export const AudioFeedback = () => {
       if (!response.ok) {
         throw new Error('Error al enviar el archivo');
       }
-
       stopProgressAndTime();
-      setFeedback({
-        type: "positive",
-        message: "Audio subido correctamente ✅",
-      });
-      
-      console.log('Archivo procesado exitosamente');
-      
     } catch (error) {
       console.error("Error al procesar el archivo:", error);
       stopProgressAndTime();
       toast({
         title: "Error",
-        description: "Error al subir el archivo ❌",
+        description: "Error al enviar el archivo ❌",
         variant: "destructive",
       });
     }
@@ -252,4 +232,3 @@ export const AudioFeedback = () => {
     </Card>
   );
 };
-
