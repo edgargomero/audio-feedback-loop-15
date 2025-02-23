@@ -1,8 +1,7 @@
-
 import { Check, Upload, Mic, MessageSquare } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AudioFeedback } from "../AudioFeedback";
 import {
   Dialog,
@@ -13,6 +12,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { useConversation } from "@11labs/react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Progress } from "@/components/ui/progress"
+import { UploadButton } from "../audio/UploadButton";
+import { RecordButton } from "../audio/RecordButton";
 
 interface WhatsappMessages {
   new: string;
@@ -114,6 +117,10 @@ export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [progressValue, setProgressValue] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const conversation = useConversation({
     onMessage: (message) => {
@@ -144,16 +151,35 @@ export const PricingCards = () => {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3")) {
+    if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3" || file.type === "audio/webm")) {
       toast({
         title: "Archivo recibido",
         description: "Procesando el archivo de audio...",
       });
+      
+      // Simular proceso de carga
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        setProgressValue(progress);
+        
+        if (progress >= 100) {
+          clearInterval(interval);
+          // Simular respuesta del servidor
+          setTimeout(() => {
+            toast({
+              title: "¡Análisis completado!",
+              description: "PDF generado correctamente",
+            });
+          }, 1000);
+        }
+      }, 500);
+      
       setIsUploadModalOpen(false);
     } else {
       toast({
         title: "Error",
-        description: "Por favor selecciona un archivo de audio válido (MP3)",
+        description: "Por favor selecciona un archivo de audio válido (MP3 o WebM)",
         variant: "destructive",
       });
     }
@@ -163,7 +189,7 @@ export const PricingCards = () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
       conversation.startSession({
-        agentId: "DnScXfRTfQyBlJMBhfKb", // ID del agente de Eleven Labs
+        agentId: "DnScXfRTfQyBlJMBhfKb",
       });
     } catch (error) {
       console.error("Error al acceder al micrófono:", error);
@@ -178,6 +204,56 @@ export const PricingCards = () => {
   const handleStopAgent = () => {
     conversation.endSession();
     setIsAgentModalOpen(false);
+  };
+
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+        
+        // Simular subida del archivo
+        handleFileUpload({
+          target: {
+            files: [file]
+          }
+        } as React.ChangeEvent<HTMLInputElement>);
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      toast({
+        title: "Grabación iniciada",
+        description: "Hablando...",
+      });
+    } catch (error) {
+      console.error("Error al iniciar la grabación:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo iniciar la grabación",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+      toast({
+        title: "Grabación finalizada",
+        description: "Procesando audio...",
+      });
+    }
   };
 
   const handlePlanSelection = (planType: string) => {
@@ -258,41 +334,44 @@ export const PricingCards = () => {
         ))}
       </div>
 
-      {/* Modal de Subir Audio */}
       <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Subir Archivo de Audio</DialogTitle>
+            <DialogTitle>Subir o Grabar Audio</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <label htmlFor="audio-file" className="sr-only">
-                Seleccionar archivo
-              </label>
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex h-32 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
-                  <label 
-                    htmlFor="audio-file" 
-                    className="flex flex-col items-center gap-2 cursor-pointer"
-                  >
-                    <Upload className="h-8 w-8 text-gray-500" />
-                    <span className="text-sm text-gray-500">
-                      Arrastra tu archivo aquí o haz click para seleccionar
-                    </span>
-                  </label>
-                  <Input
-                    id="audio-file"
-                    type="file"
-                    accept="audio/mpeg,audio/mp3"
-                    className="hidden"
-                    onChange={handleFileUpload}
+          <div className="grid gap-6 py-4">
+            <Tabs defaultValue="upload" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="upload">Subir Archivo</TabsTrigger>
+                <TabsTrigger value="record">Grabar Audio</TabsTrigger>
+              </TabsList>
+              <TabsContent value="upload" className="mt-4">
+                <UploadButton onFileUpload={(file) => {
+                  handleFileUpload({
+                    target: { files: [file] }
+                  } as React.ChangeEvent<HTMLInputElement>);
+                }} />
+              </TabsContent>
+              <TabsContent value="record" className="mt-4">
+                <div className="flex flex-col items-center gap-4">
+                  <RecordButton
+                    isRecording={isRecording}
+                    onToggleRecording={isRecording ? handleStopRecording : handleStartRecording}
                   />
+                  <p className="text-sm text-gray-500">
+                    {isRecording ? "Haz click para detener" : "Haz click para empezar a grabar"}
+                  </p>
                 </div>
-                <span className="text-xs text-gray-500">
-                  Formatos soportados: MP3 (máximo 10MB)
-                </span>
+              </TabsContent>
+            </Tabs>
+            {progressValue > 0 && progressValue < 100 && (
+              <div className="space-y-2">
+                <Progress value={progressValue} />
+                <p className="text-sm text-center text-gray-500">
+                  Procesando audio... {progressValue}%
+                </p>
               </div>
-            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
