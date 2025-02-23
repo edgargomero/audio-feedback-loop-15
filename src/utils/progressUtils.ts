@@ -1,8 +1,9 @@
+
 import { SalesAnalysis } from "@/types/sales";
 
 export const startProcessingCountdown = (
   setIsProcessing: (value: boolean) => void,
-  setProcessingTimeLeft: (value: number) => void,
+  setProcessingTimeLeft: React.Dispatch<React.SetStateAction<number>>, // Corregimos el tipo aquí
   processingInterval: React.MutableRefObject<NodeJS.Timeout | undefined>,
   setResult: (result: any) => void,
   toast: any
