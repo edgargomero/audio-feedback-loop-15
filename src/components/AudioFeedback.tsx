@@ -10,6 +10,7 @@ import { AnalysisResult } from "./audio/AnalysisResult";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
 
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -25,8 +26,6 @@ export const AudioFeedback = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
   const { feedback, setFeedback } = useSalesAnalysis();
-
-  const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/fdfea2uux2sa7todteplybdudo45qpwm';
 
   useEffect(() => {
     return () => {
@@ -137,25 +136,51 @@ export const AudioFeedback = () => {
 
   const handleFileUpload = async (file: File) => {
     try {
-      startProgressAndTime();
-      const formData = new FormData();
-      formData.append('audio', file);
+      setFeedback({
+        type: "neutral",
+        message: "Subiendo archivo... 📤",
+      });
       
-      const response = await fetch(MAKE_WEBHOOK_URL, {
-        method: 'POST',
-        body: formData
+      startProgressAndTime();
+      
+      // Convertir File a Blob para subir a Supabase
+      const audioBlob = new Blob([file], { type: file.type });
+      const publicUrl = await uploadToSupabase(audioBlob);
+      
+      if (!publicUrl) {
+        throw new Error('Error al obtener la URL pública');
+      }
+
+      setFeedback({
+        type: "positive",
+        message: "Archivo subido exitosamente, procesando... ⚙️",
       });
 
-      if (!response.ok) {
-        throw new Error('Error al enviar el archivo');
+      // Enviar la URL al webhook de Make
+      const webhookSuccess = await sendToMakeWebhook(publicUrl);
+      
+      if (!webhookSuccess) {
+        throw new Error('Error al procesar en Make');
       }
+
       stopProgressAndTime();
+      startProcessingCountdown();
+
+      setFeedback({
+        type: "positive",
+        message: "¡Archivo procesado correctamente! 🎉",
+      });
+
     } catch (error) {
-      console.error("Error al procesar el archivo:", error);
+      console.error("Error en el proceso de subida:", error);
       stopProgressAndTime();
+      setFeedback({
+        type: "negative",
+        message: "Error en el proceso ❌",
+      });
       toast({
         title: "Error",
-        description: "Error al enviar el archivo ❌",
+        description: "Error al procesar el archivo ❌",
         variant: "destructive",
       });
     }

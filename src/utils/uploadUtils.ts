@@ -30,10 +30,7 @@ export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> 
       });
 
     if (uploadError) {
-      console.error('Error al subir a Supabase:', {
-        error: uploadError,
-        detalles: uploadError.message
-      });
+      console.error('Error al subir a Supabase:', uploadError);
       throw uploadError;
     }
 
@@ -60,5 +57,37 @@ export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> 
       variant: "destructive",
     });
     return null;
+  }
+};
+
+export const sendToMakeWebhook = async (audioUrl: string): Promise<boolean> => {
+  const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/fdfea2uux2sa7todteplybdudo45qpwm';
+
+  try {
+    console.log('Enviando URL al webhook:', audioUrl);
+
+    const response = await fetch(MAKE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ audioUrl }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+
+    console.log('Webhook enviado exitosamente');
+    return true;
+
+  } catch (error) {
+    console.error('Error al enviar webhook:', error);
+    toast({
+      title: "Error",
+      description: "Error al procesar el audio en Make",
+      variant: "destructive",
+    });
+    return false;
   }
 };
