@@ -1,4 +1,3 @@
-
 import { Check, Upload, Mic, MessageSquare } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
+import { RecordButton } from "../audio/RecordButton";
 
 interface WhatsappMessages {
   new: string;
@@ -113,6 +113,8 @@ const plans = [
 export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -131,12 +133,43 @@ export const PricingCards = () => {
     }
   };
 
+  const handleStartRecording = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setIsRecording(true);
+      toast({
+        title: "Grabación iniciada",
+        description: "Comenzando a grabar audio...",
+      });
+    } catch (error) {
+      console.error("Error al acceder al micrófono:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo acceder al micrófono",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStopRecording = () => {
+    setIsRecording(false);
+    toast({
+      title: "Grabación finalizada",
+      description: "Procesando el audio...",
+    });
+  };
+
   const handlePlanSelection = (planType: string) => {
     const planConfig = PLAN_HANDLERS[planType];
     console.log(`Plan seleccionado: ${planConfig.name}`);
     
     if (planType === 'BASIC') {
       setIsUploadModalOpen(true);
+      return;
+    }
+    
+    if (planType === 'MEDIUM') {
+      setIsRecordModalOpen(true);
       return;
     }
     
@@ -242,7 +275,27 @@ export const PricingCards = () => {
         </DialogContent>
       </Dialog>
 
-      {selectedPlan && selectedPlan !== 'BASIC' && (
+      {/* Modal de Grabación */}
+      <Dialog open={isRecordModalOpen} onOpenChange={setIsRecordModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Grabar Audio</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-6 py-8">
+            <RecordButton 
+              isRecording={isRecording}
+              onToggleRecording={isRecording ? handleStopRecording : handleStartRecording}
+            />
+            <p className="text-sm text-gray-500">
+              {isRecording 
+                ? "Haz clic para detener la grabación" 
+                : "Haz clic para empezar a grabar"}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {selectedPlan && selectedPlan !== 'BASIC' && !isRecordModalOpen && (
         <div className="mt-12 animate-fade-in">
           <AudioFeedback />
         </div>
