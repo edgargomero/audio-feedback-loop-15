@@ -1,5 +1,5 @@
 
-import { Check } from "lucide-react";
+import { Check, Upload, Mic, MessageSquare } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { useState } from "react";
@@ -34,47 +34,47 @@ const plans = [
   {
     name: "Básico",
     price: "10",
-    description: "Para comenzar con el análisis de ventas",
+    description: "Sube tu audio y obtén un informe detallado en minutos",
     features: [
       "Subida de archivos de audio (.webm, .mp3)",
       "Informe de análisis básico",
       "Recomendaciones automáticas",
       "Exportación de resultados"
     ],
-    color: "bg-[#10B981]",
-    buttonText: "Sube tu audio y obtén el informe",
-    buttonColor: "bg-blue-600 hover:bg-blue-700",
+    icon: Upload,
+    buttonText: "Subir Audio",
+    buttonColor: "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
     planType: "BASIC"
   },
   {
     name: "Medio",
     price: "30",
-    description: "Ideal para equipos en crecimiento",
+    description: "Graba directamente desde la plataforma y obtén análisis detallados",
     features: [
       "Grabación directa en plataforma",
       "Hasta 50 evaluaciones por mes",
       "Informe detallado con insights",
       "2 minutos por grabación"
     ],
-    color: "bg-[#FBBF24]",
-    buttonText: "Graba y recibe análisis instantáneo",
+    icon: Mic,
+    buttonText: "Grabar y Analizar",
     recommended: true,
-    buttonColor: "bg-blue-600 hover:bg-blue-700",
+    buttonColor: "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700",
     planType: "MEDIUM"
   },
   {
     name: "Pro",
     price: "Consultar",
-    description: "Consultoría personalizada",
+    description: "Análisis en tiempo real + Consultoría personalizada",
     features: [
       "Grabaciones de hasta 10 minutos",
       "Análisis en tiempo real",
       "Feedback durante la llamada",
       "Sesión de consultoría estratégica"
     ],
-    color: "bg-[#EF4444]",
-    buttonText: "Agenda tu consultoría",
-    buttonColor: "bg-blue-600 hover:bg-blue-700",
+    icon: MessageSquare,
+    buttonText: "Habla con un Asesor",
+    buttonColor: "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700",
     planType: "PRO"
   }
 ];
@@ -89,6 +89,12 @@ export const PricingCards = () => {
     console.log(`Duración máxima: ${planConfig.maxDuration || 'Sin límite'}`);
     console.log(`Tipo de interacción: ${planConfig.type}`);
     
+    if (planType === 'PRO') {
+      // Redirigir a WhatsApp para el plan Pro
+      window.open('https://wa.me/+34123456789?text=Hola,%20me%20interesa%20el%20Plan%20Pro', '_blank');
+      return;
+    }
+    
     setSelectedPlan(planType);
   };
 
@@ -98,19 +104,22 @@ export const PricingCards = () => {
         {plans.map((plan) => (
           <Card 
             key={plan.name}
-            className={`relative p-8 bg-[#1a1f2e] border-0 shadow-xl transition-all duration-200 hover:scale-105 ${
-              plan.recommended ? 'ring-2 ring-blue-500' : ''
+            className={`relative p-8 bg-[#1a1f2e] border-0 shadow-xl transition-all duration-300 hover:transform hover:scale-105 hover:shadow-2xl ${
+              plan.recommended ? 'ring-2 ring-green-500' : ''
             }`}
           >
             {plan.recommended && (
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <span className="inline-block bg-blue-500 text-white px-4 py-1 text-sm font-semibold rounded-full shadow-lg">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <span className="inline-block bg-gradient-to-r from-green-400 to-green-500 text-white px-4 py-1 text-sm font-semibold rounded-full shadow-lg">
                   Recomendado
                 </span>
               </div>
             )}
             
             <div className="text-center">
+              <div className="h-12 w-12 mx-auto mb-4 bg-gradient-to-br from-blue-400/20 to-blue-600/20 rounded-full flex items-center justify-center">
+                {plan.icon && <plan.icon className="h-6 w-6 text-blue-500" />}
+              </div>
               <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
               <div className="mb-4">
                 <span className="text-4xl font-bold text-white">${plan.price}</span>
@@ -129,7 +138,7 @@ export const PricingCards = () => {
             </ul>
 
             <Button 
-              className={`w-full py-6 text-lg font-semibold ${plan.buttonColor} text-white transition-all duration-200`}
+              className={`w-full py-6 text-lg font-semibold text-white transition-all duration-300 ${plan.buttonColor} shadow-lg hover:shadow-xl`}
               onClick={() => handlePlanSelection(plan.planType)}
             >
               {plan.buttonText}
