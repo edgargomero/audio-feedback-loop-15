@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Card } from "./ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -9,12 +8,15 @@ import { UploadButton } from "./audio/UploadButton";
 import { FeedbackDisplay } from "./audio/FeedbackDisplay";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
 import { Progress } from "./ui/progress";
+import { Button } from "./ui/button";
+import { FileDown } from "lucide-react";
 
 export const AudioFeedback = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isRecordingExtra, setIsRecordingExtra] = useState(false);
   const [progressValue, setProgressValue] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const progressInterval = useRef<NodeJS.Timeout>();
   const timeInterval = useRef<NodeJS.Timeout>();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -125,74 +127,14 @@ export const AudioFeedback = () => {
     stopProgressAndTime();
     setIsRecording(false);
     conversation.endSession();
-    toast({
-      title: "¡Análisis completado!",
-      description: "Procesando resultados... ✅",
-    });
-  };
-
-  const handleExtraRecording = async () => {
-    if (!isRecordingExtra) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
-        mediaRecorderRef.current = mediaRecorder;
-        audioChunksRef.current = [];
-        startProgressAndTime();
-
-        mediaRecorder.ondataavailable = (event) => {
-          audioChunksRef.current.push(event.data);
-        };
-
-        mediaRecorder.onstop = () => {
-          stopProgressAndTime();
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
-          
-          const formData = new FormData();
-          formData.append('audio', audioBlob, 'recording.mp3');
-          
-          fetch(MAKE_WEBHOOK_URL, {
-            method: 'POST',
-            body: formData
-          })
-          .then(response => {
-            toast({
-              title: "¡Análisis completado!",
-              description: "Audio enviado correctamente ✅",
-            });
-          })
-          .catch(error => {
-            console.error('Error al enviar a Make:', error);
-            toast({
-              title: "Error",
-              description: "Error al enviar el audio a Make",
-              variant: "destructive",
-            });
-          });
-        };
-
-        mediaRecorder.start();
-        setIsRecordingExtra(true);
-        toast({
-          title: "Grabando",
-          description: "Grabando audio adicional...",
-        });
-      } catch (error) {
-        console.error("Error al acceder al micrófono:", error);
-        toast({
-          title: "Error",
-          description: "No hay micrófono ❌",
-          variant: "destructive",
-        });
-      }
-    } else {
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-        const tracks = mediaRecorderRef.current.stream.getTracks();
-        tracks.forEach(track => track.stop());
-      }
-      setIsRecordingExtra(false);
-    }
+    // Simulamos la recepción del PDF después de 2 segundos
+    setTimeout(() => {
+      setAnalysisResult("analysis_result.pdf");
+      toast({
+        title: "¡Análisis completado!",
+        description: "PDF generado y listo para descargar ✅",
+      });
+    }, 2000);
   };
 
   const handleFileUpload = async (file: File) => {
@@ -208,10 +150,14 @@ export const AudioFeedback = () => {
 
       if (response.ok) {
         stopProgressAndTime();
-        toast({
-          title: "¡Análisis completado!",
-          description: "Audio procesado correctamente ✅",
-        });
+        // Simulamos la recepción del PDF después de 2 segundos
+        setTimeout(() => {
+          setAnalysisResult("analysis_result.pdf");
+          toast({
+            title: "¡Análisis completado!",
+            description: "PDF generado y listo para descargar ✅",
+          });
+        }, 2000);
       } else {
         throw new Error('Error al enviar el archivo');
       }
@@ -226,10 +172,12 @@ export const AudioFeedback = () => {
     }
   };
 
-  const getProgressColor = (value: number): string => {
-    if (value < 30) return "from-blue-500 to-blue-600";
-    if (value < 70) return "from-yellow-500 to-yellow-600";
-    return "from-green-500 to-green-600";
+  const handleDownloadPDF = () => {
+    // Aquí simularemos la descarga del PDF
+    toast({
+      title: "Descargando PDF",
+      description: "Iniciando descarga del análisis...",
+    });
   };
 
   return (
@@ -240,25 +188,16 @@ export const AudioFeedback = () => {
             isRecording={isRecording}
             onToggleRecording={isRecording ? handleStopRecording : handleStartRecording}
           />
-          <ExtraRecordButton 
-            isRecording={isRecordingExtra}
-            onToggleRecording={handleExtraRecording}
-          />
           <UploadButton onFileUpload={handleFileUpload} />
         </div>
 
-        {(isRecording || isRecordingExtra) && (
+        {(isRecording) && (
           <div className="space-y-3">
             <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
               <span>Grabando...</span>
               <span>{formatTime(recordingTime)}</span>
             </div>
-            <div className="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-              <div
-                className={`h-full transition-all duration-300 bg-gradient-to-r ${getProgressColor(progressValue)}`}
-                style={{ width: `${progressValue}%` }}
-              />
-            </div>
+            <Progress value={progressValue} className="h-2" />
           </div>
         )}
 
@@ -267,6 +206,29 @@ export const AudioFeedback = () => {
           message={feedback.message}
           stage={feedback.stage}
         />
+
+        {/* Zona de descarga del PDF */}
+        {analysisResult && (
+          <div className="mt-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <FileDown className="h-5 w-5 text-blue-500" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {analysisResult}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPDF}
+                className="flex items-center space-x-2"
+              >
+                <FileDown className="h-4 w-4" />
+                <span>Descargar</span>
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );

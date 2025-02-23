@@ -10,7 +10,7 @@ interface UploadButtonProps {
 export const UploadButton = ({ onFileUpload }: UploadButtonProps) => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3")) {
+    if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3" || file.type === "audio/webm")) {
       onFileUpload(file);
     }
   };
@@ -25,7 +25,7 @@ export const UploadButton = ({ onFileUpload }: UploadButtonProps) => {
       </Button>
       <Input
         type="file"
-        accept="audio/mpeg,audio/mp3"
+        accept="audio/mpeg,audio/mp3,audio/webm"
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         onChange={handleFileChange}
       />
