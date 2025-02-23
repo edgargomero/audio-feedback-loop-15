@@ -151,6 +151,8 @@ export const AudioFeedback = () => {
       const formData = new FormData();
       formData.append('audioUrl', publicUrl);
       
+      console.log('Enviando URL al webhook:', publicUrl);
+      
       const response = await fetch(MAKE_WEBHOOK_URL, {
         method: 'POST',
         body: formData
@@ -165,6 +167,9 @@ export const AudioFeedback = () => {
         type: "positive",
         message: "Audio subido correctamente ✅",
       });
+      
+      console.log('Archivo procesado exitosamente');
+      
     } catch (error) {
       console.error("Error al procesar el archivo:", error);
       stopProgressAndTime();
@@ -247,3 +252,4 @@ export const AudioFeedback = () => {
     </Card>
   );
 };
+
