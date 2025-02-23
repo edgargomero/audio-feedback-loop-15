@@ -1,4 +1,3 @@
-
 import { Check, Upload, Mic, MessageSquare } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
@@ -26,7 +25,11 @@ const PLAN_HANDLERS = {
     description: "Análisis en tiempo real con consultoría personalizada",
     handler: "ELEVEN_LABS", // Usa ElevenLabs con configuración especial
     maxDuration: 600, // 10 minutos en segundos
-    type: "record_realtime"
+    type: "record_realtime",
+    whatsappMessages: {
+      new: "¡Hola! 👋 Estoy interesado en el Plan Pro de análisis de ventas y me gustaría agendar una consultoría personalizada. 📊💡 ¿Podrías brindarme más información? ¡Gracias! 🙌",
+      recurring: "¡Hola de nuevo! 👋 Estoy listo para mi próxima sesión de análisis. ¿Podemos agendar una fecha? 📅✨"
+    }
   }
 };
 
@@ -90,8 +93,13 @@ export const PricingCards = () => {
     console.log(`Tipo de interacción: ${planConfig.type}`);
     
     if (planType === 'PRO') {
-      // Redirigir a WhatsApp para el plan Pro
-      window.open('https://wa.me/+34123456789?text=Hola,%20me%20interesa%20el%20Plan%20Pro', '_blank');
+      const isRecurring = false; // Aquí podrías implementar la lógica para detectar clientes recurrentes
+      const message = isRecurring 
+        ? planConfig.whatsappMessages.recurring 
+        : planConfig.whatsappMessages.new;
+      
+      const encodedMessage = encodeURIComponent(message);
+      window.open(`https://wa.me/+34123456789?text=${encodedMessage}`, '_blank');
       return;
     }
     
