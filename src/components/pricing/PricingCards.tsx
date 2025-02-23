@@ -3,6 +3,7 @@ import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { useState, useRef, useEffect } from "react";
 import { AudioFeedback } from "../AudioFeedback";
+import { ChatMessage } from "../chat/ChatMessage";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +13,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { useConversation } from "@11labs/react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { UploadButton } from "../audio/UploadButton";
 import { RecordButton } from "../audio/RecordButton";
 import { ProcessingCountdown } from "../audio/ProcessingCountdown";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface WhatsappMessages {
   new: string;
@@ -127,37 +129,22 @@ export const PricingCards = () => {
   const processingInterval = useRef<NodeJS.Timeout>();
   const [pdfReady, setPdfReady] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Array<{
+    text: string;
+    isAgent: boolean;
+    feedback?: { emoji: string; phrase: string };
+  }>>([]);
 
-  const conversation = useConversation({
-    onMessage: (message) => {
-      console.log("Mensaje recibido:", message);
-      if (message.type === "agent_response") {
-        toast({
-          title: "Respuesta del agente",
-          description: message.content,
-        });
-      }
-    },
-    onError: (error) => {
-      console.error("Error en la conversación:", error);
-      toast({
-        title: "Error",
-        description: "Error de conexión con el agente",
-        variant: "destructive",
-      });
-    },
-    onConnect: () => {
-      console.log("Conexión establecida");
-      toast({
-        title: "Conectado",
-        description: "Conexión establecida con el agente",
-      });
-    },
-  });
+  // Ejemplo de feedbacks para prueba
+  const feedbacks = [
+    { emoji: "👍", phrase: "¡Buen tono de voz!" },
+    { emoji: "🎯", phrase: "Excelente explicación" },
+    { emoji: "💡", phrase: "Punto clave identificado" }
+  ];
 
   const startProcessingCountdown = () => {
     setIsProcessing(true);
-    setProcessingTimeLeft(120);
+    setProcessingTimeLeft(15); // Cambiado a 15 segundos
     setPdfReady(false);
     setPdfUrl(null);
 
@@ -167,7 +154,6 @@ export const PricingCards = () => {
           clearInterval(processingInterval.current);
           setIsProcessing(false);
           setPdfReady(true);
-          // Simulamos una URL del PDF - esto vendría del backend
           setPdfUrl('https://ejemplo.com/analisis.pdf');
           toast({
             title: "¡Análisis completado!",
@@ -180,7 +166,39 @@ export const PricingCards = () => {
     }, 1000);
   };
 
-  // Función para simular la interrupción desde el backend
+  const conversation = useConversation({
+    onMessage: (message) => {
+      console.log("Mensaje recibido:", message);
+      if (message.type === "agent_response") {
+        setMessages(prev => [...prev, {
+          text: message.content,
+          isAgent: true,
+          feedback: feedbacks[Math.floor(Math.random() * feedbacks.length)]
+        }]);
+      } else if (message.type === "transcription") {
+        setMessages(prev => [...prev, {
+          text: message.content,
+          isAgent: false
+        }]);
+      }
+    },
+    onError: (error) => {
+      console.error("Error en la conversación:", error);
+      toast({
+        title: "Error",
+        description: "Error de conexión con el agente",
+        variant: "destructive",
+      });
+    },
+    onConnect: () => {
+      console.log("Conexión establecida");
+      setMessages(prev => [...prev, {
+        text: "¡Hola! Soy tu agente de análisis. ¿En qué puedo ayudarte?",
+        isAgent: true
+      }]);
+    },
+  });
+
   const handleBackendReady = () => {
     if (processingInterval.current) {
       clearInterval(processingInterval.current);
@@ -460,7 +478,6 @@ export const PricingCards = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal del Agente */}
       <Dialog open={isAgentModalOpen} onOpenChange={(open) => {
         if (!open) handleStopAgent();
         setIsAgentModalOpen(open);
@@ -469,14 +486,24 @@ export const PricingCards = () => {
           <DialogHeader>
             <DialogTitle>Conversación con el Agente</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col items-center gap-6 py-8">
-            <div className="text-center space-y-4">
-              <p className="text-sm text-gray-500">
-                El agente está escuchando. Habla para interactuar.
-              </p>
+          <div className="flex flex-col gap-6">
+            <ScrollArea className="h-[400px] p-4 rounded-md border">
+              <div className="flex flex-col gap-4">
+                {messages.map((message, index) => (
+                  <ChatMessage
+                    key={index}
+                    message={message.text}
+                    isAgent={message.isAgent}
+                    feedback={message.feedback}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+            <div className="flex justify-center">
               <Button 
                 onClick={handleStopAgent}
                 variant="destructive"
+                className="w-full max-w-xs"
               >
                 Finalizar Conversación
               </Button>
