@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { UploadButton } from "../audio/UploadButton";
 import { RecordButton } from "../audio/RecordButton";
+import { ProcessingCountdown } from "../audio/ProcessingCountdown";
 
 interface WhatsappMessages {
   new: string;
@@ -156,6 +157,9 @@ export const PricingCards = () => {
         description: "Procesando el archivo de audio...",
       });
       
+      // No cerramos el modal aquí
+      // setIsUploadModalOpen(false); <- Removemos esta línea
+      
       // Simular proceso de carga
       let progress = 0;
       const interval = setInterval(() => {
@@ -173,8 +177,6 @@ export const PricingCards = () => {
           }, 1000);
         }
       }, 500);
-      
-      setIsUploadModalOpen(false);
     } else {
       toast({
         title: "Error",
@@ -242,6 +244,7 @@ export const PricingCards = () => {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       setIsRecording(false);
+      // No cerramos el modal aquí
       toast({
         title: "Grabación finalizada",
         description: "Procesando audio...",
@@ -359,6 +362,17 @@ export const PricingCards = () => {
                 <p className="text-sm text-center text-gray-500">
                   Procesando audio... {progressValue}%
                 </p>
+              </div>
+            )}
+            {progressValue >= 100 && (
+              <div className="space-y-4">
+                <ProcessingCountdown
+                  timeLeft={120}
+                  onCancel={() => {
+                    setProgressValue(0);
+                    setIsUploadModalOpen(false);
+                  }}
+                />
               </div>
             )}
           </div>
