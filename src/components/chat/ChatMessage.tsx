@@ -18,14 +18,16 @@ export const ChatMessage = ({ message, isAgent, feedback }: ChatMessageProps) =>
       </div>
       <div className="flex flex-col gap-1 max-w-[80%]">
         <div className={`rounded-lg p-3 ${
-          isAgent ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground'
+          isAgent 
+            ? 'bg-muted text-muted-foreground' 
+            : 'bg-primary text-primary-foreground'
         }`}>
           {message}
         </div>
         {feedback && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground animate-fade-in">
             <span>{feedback.emoji}</span>
-            <span>{feedback.phrase}</span>
+            <span className="font-medium">{feedback.phrase}</span>
           </div>
         )}
       </div>
