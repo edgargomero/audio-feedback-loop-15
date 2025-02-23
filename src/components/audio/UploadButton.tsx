@@ -3,6 +3,8 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Upload } from "lucide-react";
 import { useRef } from "react";
+import { uploadToSupabase, sendToMakeWebhook } from "../../utils/uploadUtils";
+import { useToast } from "@/hooks/use-toast";
 
 interface UploadButtonProps {
   onFileUpload: (file: File) => void;
@@ -10,15 +12,57 @@ interface UploadButtonProps {
 
 export const UploadButton = ({ onFileUpload }: UploadButtonProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      onFileUpload(file);
+      try {
+        console.log('Archivo seleccionado:', {
+          nombre: file.name,
+          tipo: file.type,
+          tamaño: file.size
+        });
+
+        // Convertir File a Blob
+        const audioBlob = new Blob([file], { type: file.type });
+        
+        // Subir a Supabase
+        const publicUrl = await uploadToSupabase(audioBlob);
+        
+        if (!publicUrl) {
+          throw new Error('Error al obtener la URL pública');
+        }
+
+        console.log('URL pública generada:', publicUrl);
+
+        // Enviar al webhook de Make
+        const webhookSuccess = await sendToMakeWebhook(publicUrl);
+        
+        if (!webhookSuccess) {
+          throw new Error('Error al procesar en Make');
+        }
+
+        toast({
+          title: "¡Éxito!",
+          description: "Archivo procesado correctamente",
+        });
+
+        // Llamar al callback proporcionado
+        onFileUpload(file);
+
+      } catch (error) {
+        console.error('Error en el proceso de subida:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo procesar el archivo",
+          variant: "destructive",
+        });
+      }
     }
   };
 
