@@ -1,7 +1,7 @@
 import { Check, Upload, Mic, MessageSquare } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AudioFeedback } from "../AudioFeedback";
 import {
   Dialog,
@@ -122,6 +122,9 @@ export const PricingCards = () => {
   const [progressValue, setProgressValue] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingTimeLeft, setProcessingTimeLeft] = useState(120);
+  const processingInterval = useRef<NodeJS.Timeout>();
 
   const conversation = useConversation({
     onMessage: (message) => {
@@ -150,6 +153,27 @@ export const PricingCards = () => {
     },
   });
 
+  const startProcessingCountdown = () => {
+    setIsProcessing(true);
+    setProcessingTimeLeft(120);
+
+    processingInterval.current = setInterval(() => {
+      setProcessingTimeLeft(prev => {
+        if (prev <= 0) {
+          clearInterval(processingInterval.current);
+          setIsProcessing(false);
+          setIsUploadModalOpen(false);
+          toast({
+            title: "¡Análisis completado!",
+            description: "PDF generado correctamente",
+          });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const handleFileUpload = (file: File) => {
     if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3" || file.type === "audio/webm")) {
       toast({
@@ -157,26 +181,16 @@ export const PricingCards = () => {
         description: "Procesando el archivo de audio...",
       });
       
-      // No cerramos el modal aquí
-      // setIsUploadModalOpen(false); <- Removemos esta línea
-      
-      // Simular proceso de carga
       let progress = 0;
       const interval = setInterval(() => {
-        progress += 10;
+        progress += 2;
         setProgressValue(progress);
         
         if (progress >= 100) {
           clearInterval(interval);
-          // Simular respuesta del servidor
-          setTimeout(() => {
-            toast({
-              title: "¡Análisis completado!",
-              description: "PDF generado correctamente",
-            });
-          }, 1000);
+          startProcessingCountdown();
         }
-      }, 500);
+      }, 100);
     } else {
       toast({
         title: "Error",
@@ -185,6 +199,27 @@ export const PricingCards = () => {
       });
     }
   };
+
+  const cancelProcessing = () => {
+    if (processingInterval.current) {
+      clearInterval(processingInterval.current);
+    }
+    setIsProcessing(false);
+    setProgressValue(0);
+    setProcessingTimeLeft(120);
+    toast({
+      title: "Procesamiento cancelado",
+      description: "Se ha cancelado el procesamiento del audio",
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (processingInterval.current) {
+        clearInterval(processingInterval.current);
+      }
+    };
+  }, []);
 
   const handleStartAgent = async () => {
     try {
@@ -364,14 +399,11 @@ export const PricingCards = () => {
                 </p>
               </div>
             )}
-            {progressValue >= 100 && (
+            {isProcessing && (
               <div className="space-y-4">
                 <ProcessingCountdown
-                  timeLeft={120}
-                  onCancel={() => {
-                    setProgressValue(0);
-                    setIsUploadModalOpen(false);
-                  }}
+                  timeLeft={processingTimeLeft}
+                  onCancel={cancelProcessing}
                 />
               </div>
             )}
