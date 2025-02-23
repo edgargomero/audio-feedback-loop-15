@@ -90,7 +90,7 @@ const plans = [
     icon: Mic,
     buttonText: "Grabar y Analizar",
     recommended: true,
-    buttonColor: "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700",
+    buttonColor: "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700", // Cambiado a verde
     planType: "MEDIUM"
   },
   {
