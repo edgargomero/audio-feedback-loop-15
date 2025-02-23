@@ -1,38 +1,26 @@
 
 import { supabase } from "../integrations/supabase/client";
-import { toast } from "../hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 
-export const uploadToSupabase = async (audioBlob: Blob) => {
+export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> => {
   const BUCKET_NAME = "audio_chunks";
   
   try {
     console.log('Iniciando proceso de subida:', {
       bucketName: BUCKET_NAME,
       blobTipo: audioBlob.type,
-      blobTamaño: audioBlob.size,
-      // Removed supabaseURL as it's a protected property
+      blobTamaño: audioBlob.size
     });
 
-    // Generar un nombre único para el archivo
+    // Generate unique filename
     const timestamp = new Date().getTime();
     const randomString = Math.random().toString(36).substring(7);
-    const fileName = `audio-${timestamp}-${randomString}.webm`;
+    const fileExtension = audioBlob.type.includes('mp3') ? 'mp3' : 'webm';
+    const fileName = `audio-${timestamp}-${randomString}.${fileExtension}`;
 
     console.log('Preparando subida con nombre de archivo:', fileName);
 
-    // Verificar que el bucket existe
-    const { data: buckets, error: bucketError } = await supabase.storage
-      .listBuckets();
-    
-    console.log('Buckets disponibles:', buckets);
-
-    if (bucketError) {
-      console.error('Error al listar buckets:', bucketError);
-      throw bucketError;
-    }
-
-    // Subir el archivo a Supabase
-    console.log('Iniciando subida del archivo...');
+    // Upload file to Supabase
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(fileName, audioBlob, {
@@ -44,41 +32,33 @@ export const uploadToSupabase = async (audioBlob: Blob) => {
     if (uploadError) {
       console.error('Error al subir a Supabase:', {
         error: uploadError,
-        detalles: uploadError.message,
-        // Removed statusCode as it doesn't exist in StorageError type
+        detalles: uploadError.message
       });
-      toast({
-        title: "Error",
-        description: `Error al subir el archivo: ${uploadError.message}`,
-        variant: "destructive",
-      });
-      return null;
+      throw uploadError;
     }
 
     console.log('Archivo subido exitosamente:', uploadData);
 
-    // Obtener la URL pública
-    console.log('Obteniendo URL pública...');
+    // Get public URL
     const { data: publicUrlData } = await supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(fileName);
 
+    if (!publicUrlData?.publicUrl) {
+      throw new Error('No se pudo obtener la URL pública');
+    }
+
     console.log('URL pública generada:', publicUrlData.publicUrl);
     
-    toast({
-      title: "Éxito",
-      description: "Audio subido correctamente a Supabase",
-    });
-
     return publicUrlData.publicUrl;
+
   } catch (error) {
     console.error('Error inesperado en el proceso de subida:', error);
     toast({
       title: "Error",
-      description: "Error inesperado al subir el archivo",
+      description: "Error al subir el archivo a Supabase",
       variant: "destructive",
     });
     return null;
   }
 };
-

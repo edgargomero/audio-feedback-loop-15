@@ -1,4 +1,3 @@
-
 import { Check, Upload, Mic, MessageSquare } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
@@ -13,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { useConversation } from "@11labs/react";
+import { uploadToSupabase } from "@/utils/uploadUtils";
 
 interface WhatsappMessages {
   new: string;
@@ -144,19 +144,59 @@ export const PricingCards = () => {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && (file.type === "audio/mpeg" || file.type === "audio/mp3")) {
-      toast({
-        title: "Archivo recibido",
-        description: "Procesando el archivo de audio...",
-      });
-      setIsUploadModalOpen(false);
-    } else {
-      toast({
-        title: "Error",
-        description: "Por favor selecciona un archivo de audio válido (MP3)",
-        variant: "destructive",
-      });
+    if (file) {
+      if (file.type === "audio/mpeg" || file.type === "audio/mp3" || file.type === "audio/webm") {
+        console.log("Iniciando proceso de subida de archivo:", file.name);
+        
+        toast({
+          title: "Archivo recibido",
+          description: "Procesando el archivo de audio...",
+        });
+        
+        // Convert File to Blob and upload
+        const audioBlob = new Blob([file], { type: file.type });
+        uploadToSupabase(audioBlob)
+          .then((publicUrl) => {
+            if (publicUrl) {
+              console.log("Archivo subido exitosamente:", publicUrl);
+              // Send to Make webhook
+              const formData = new FormData();
+              formData.append('audioUrl', publicUrl);
+              
+              return fetch(MAKE_WEBHOOK_URL, {
+                method: 'POST',
+                body: formData
+              });
+            } else {
+              throw new Error('Error al subir el archivo a Supabase');
+            }
+          })
+          .then(response => {
+            if (!response?.ok) {
+              throw new Error('Error al procesar el audio en Make');
+            }
+            toast({
+              title: "¡Éxito!",
+              description: "Audio procesado correctamente ✅",
+            });
+          })
+          .catch((error) => {
+            console.error("Error en el proceso:", error);
+            toast({
+              title: "Error",
+              description: "Error al procesar el archivo ❌",
+              variant: "destructive",
+            });
+          });
+      } else {
+        toast({
+          title: "Error",
+          description: "Por favor selecciona un archivo de audio válido (MP3 o WebM)",
+          variant: "destructive",
+        });
+      }
     }
+    setIsUploadModalOpen(false);
   };
 
   const handleStartAgent = async () => {
@@ -283,7 +323,7 @@ export const PricingCards = () => {
                   <Input
                     id="audio-file"
                     type="file"
-                    accept="audio/mpeg,audio/mp3"
+                    accept="audio/mpeg,audio/mp3,audio/webm"
                     className="hidden"
                     onChange={handleFileUpload}
                   />
