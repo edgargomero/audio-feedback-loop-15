@@ -95,31 +95,16 @@ export const AudioFeedback = () => {
           audioChunksRef.current.push(event.data);
         };
 
-        mediaRecorder.onstop = () => {
+        mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
+          const publicUrl = await uploadToSupabase(audioBlob);
           
-          // Crear FormData para enviar a Make
-          const formData = new FormData();
-          formData.append('audio', audioBlob, 'recording.mp3');
-          
-          fetch(MAKE_WEBHOOK_URL, {
-            method: 'POST',
-            body: formData
-          })
-          .then(response => {
+          if (publicUrl) {
             toast({
-              title: "Éxito",
-              description: "Audio enviado a Make correctamente",
+              title: "URL del archivo",
+              description: publicUrl,
             });
-          })
-          .catch(error => {
-            console.error('Error al enviar a Make:', error);
-            toast({
-              title: "Error",
-              description: "Error al enviar el audio a Make",
-              variant: "destructive",
-            });
-          });
+          }
         };
 
         mediaRecorder.start();
