@@ -1,7 +1,6 @@
 
 import { useState, useRef } from "react";
 import { useToast } from "./use-toast";
-import { useSalesAnalysis } from "./use-sales-analysis";
 
 export const useAudioRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -25,17 +24,17 @@ export const useAudioRecorder = () => {
       if (!sessionStarted) return;
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm'
-      });
+      mediaRecorderRef.current = new MediaRecorder(stream);
       
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
-      mediaRecorderRef.current.start();
+      mediaRecorderRef.current.start(1000); // Grabamos en chunks de 1 segundo
       setIsRecording(true);
       startProgressAndTime();
 
@@ -54,31 +53,7 @@ export const useAudioRecorder = () => {
       return new Promise<File>((resolve) => {
         mediaRecorderRef.current!.onstop = async () => {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          
-          // Convertir WebM a MP3 usando un AudioContext
-          const audioContext = new AudioContext();
-          const audioBuffer = await audioBlob.arrayBuffer();
-          const audioData = await audioContext.decodeAudioData(audioBuffer);
-          
-          // Crear un nuevo AudioBuffer para MP3
-          const offlineContext = new OfflineAudioContext(
-            audioData.numberOfChannels,
-            audioData.length,
-            audioData.sampleRate
-          );
-          
-          const source = offlineContext.createBufferSource();
-          source.buffer = audioData;
-          source.connect(offlineContext.destination);
-          source.start();
-          
-          const renderedBuffer = await offlineContext.startRendering();
-          const mp3Blob = new Blob(
-            [Int8Array.from(renderedBuffer.getChannelData(0))],
-            { type: 'audio/mp3' }
-          );
-          
-          const file = new File([mp3Blob], 'recording.mp3', { type: 'audio/mp3' });
+          const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
           resolve(file);
         };
         
@@ -103,7 +78,7 @@ export const useAudioRecorder = () => {
         }
         return prev + 1;
       });
-    }, 100);
+    }, 1200); // Ajustado para que coincida con los 120 segundos totales
 
     timeInterval.current = setInterval(() => {
       setRecordingTime(prev => prev + 1);
