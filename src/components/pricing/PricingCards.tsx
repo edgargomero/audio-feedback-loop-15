@@ -289,7 +289,10 @@ export const PricingCards = () => {
       </div>
 
       <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
-        <DialogContent aria-describedby="upload-modal-description">
+        <DialogContent 
+          aria-describedby="upload-modal-description"
+          className="sm:max-w-[425px]"
+        >
           <DialogHeader>
             <DialogTitle>Subir o Grabar Audio</DialogTitle>
             <DialogDescription id="upload-modal-description">
@@ -358,7 +361,10 @@ export const PricingCards = () => {
         if (!open) handleStopAgent();
         setIsAgentModalOpen(open);
       }}>
-        <DialogContent aria-describedby="agent-modal-description">
+        <DialogContent 
+          aria-describedby="agent-modal-description" 
+          className="max-w-4xl h-[600px]"
+        >
           <DialogHeader>
             <DialogTitle>Conversación con el Agente</DialogTitle>
             <DialogDescription id="agent-modal-description">
