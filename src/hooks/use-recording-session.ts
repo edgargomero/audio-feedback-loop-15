@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useConversation } from "@11labs/react";
-import { setConversationId } from "../utils/conversationState";
+import { setConversationId, clearConversationId } from "../utils/conversationState";
 import { useToast } from "./use-toast";
 
 export const useRecordingSession = () => {
@@ -83,4 +83,3 @@ export const useRecordingSession = () => {
     endSession
   };
 };
-

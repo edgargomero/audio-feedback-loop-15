@@ -14,4 +14,3 @@ export const clearConversationId = () => {
   conversationId = null;
   console.log('Global Conversation ID cleared');
 };
-
