@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import { useToast } from "./use-toast";
 import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
+import { convertWebmToMp3 } from "../utils/audioConverter";
 
 export const useAudioRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -19,38 +20,10 @@ export const useAudioRecorder = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getSupportedMimeType = (): string => {
-    const audioConfig = {
-      mimeTypes: [
-        { type: 'audio/wav', codec: 'pcm' },
-        { type: 'audio/mpeg', codec: 'mp3' },
-        { type: 'audio/aac', codec: '' },
-        { type: 'audio/ogg', codec: 'opus' },
-        { type: 'audio/mp4', codec: 'mp4a.40.2' }
-      ]
-    };
-
-    for (const format of audioConfig.mimeTypes) {
-      const mimeType = format.codec 
-        ? `${format.type};codecs=${format.codec}`
-        : format.type;
-        
-      if (MediaRecorder.isTypeSupported(mimeType)) {
-        console.log('Formato soportado encontrado:', mimeType);
-        return mimeType;
-      }
-    }
-
-    throw new Error('No se encontró ningún formato de audio soportado');
-  };
-
   const handleStartRecording = async (startSession: () => Promise<boolean>) => {
     try {
       const sessionStarted = await startSession();
       if (!sessionStarted) return;
-
-      const supportedType = getSupportedMimeType();
-      console.log('Iniciando grabación con formato:', supportedType);
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -62,19 +35,14 @@ export const useAudioRecorder = () => {
         } 
       });
       
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: supportedType,
-        audioBitsPerSecond: 128000
-      });
-      
+      mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
           console.log('Chunk de audio recibido:', {
             tipo: event.data.type,
-            tamaño: event.data.size,
-            mimeType: supportedType
+            tamaño: event.data.size
           });
           audioChunksRef.current.push(event.data);
         }
@@ -96,23 +64,29 @@ export const useAudioRecorder = () => {
 
   const handleStopRecording = async () => {
     if (mediaRecorderRef.current && isRecording) {
-      return new Promise<File>((resolve) => {
+      return new Promise<File>(async (resolve) => {
         mediaRecorderRef.current!.onstop = async () => {
-          const mimeType = mediaRecorderRef.current!.mimeType;
-          console.log('Finalizando grabación con formato:', mimeType);
-          
-          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-          
-          let extension = 'wav';
-          if (mimeType.includes('mpeg') || mimeType.includes('mp3')) extension = 'mp3';
-          else if (mimeType.includes('aac')) extension = 'aac';
-          else if (mimeType.includes('ogg')) extension = 'ogg';
-          else if (mimeType.includes('mp4')) extension = 'm4a';
-          
-          console.log('Generando archivo con extensión:', extension);
-          
-          const file = new File([audioBlob], `recording.${extension}`, { type: mimeType });
-          resolve(file);
+          try {
+            // Crear el blob de WebM inicial
+            const webmBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            console.log('Audio WebM creado:', { tamaño: webmBlob.size });
+            
+            // Convertir WebM a WAV
+            const wavBlob = await convertWebmToMp3(webmBlob);
+            console.log('Audio convertido a WAV:', { tamaño: wavBlob.size });
+            
+            // Crear el archivo final
+            const file = new File([wavBlob], 'recording.wav', { type: 'audio/wav' });
+            resolve(file);
+            
+          } catch (error) {
+            console.error('Error al procesar el audio:', error);
+            toast({
+              title: "Error",
+              description: "Error al procesar el audio ❌",
+              variant: "destructive",
+            });
+          }
         };
         
         mediaRecorderRef.current!.stop();
