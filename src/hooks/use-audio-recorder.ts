@@ -5,6 +5,8 @@ import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
 import { convertWebmToMp3 } from "../utils/audioConverter";
 
 export const useAudioRecorder = () => {
+  console.log('🎯 Hook useAudioRecorder inicializado'); // Log inicial para verificar que el hook se está usando
+
   const [isRecording, setIsRecording] = useState(false);
   const [progressValue, setProgressValue] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -21,9 +23,13 @@ export const useAudioRecorder = () => {
   };
 
   const handleStartRecording = async (startSession: () => Promise<boolean>) => {
+    console.log('⚡ Función handleStartRecording llamada'); // Log para verificar que la función se llama
     try {
       const sessionStarted = await startSession();
-      if (!sessionStarted) return;
+      if (!sessionStarted) {
+        console.log('❌ Sesión no iniciada'); // Log cuando la sesión no inicia
+        return;
+      }
       
       console.log('🎯 Iniciando proceso de grabación...');
       console.log('🎤 Solicitando acceso al micrófono...');
@@ -161,4 +167,3 @@ export const useAudioRecorder = () => {
     handleStopRecording,
   };
 };
-
