@@ -223,9 +223,13 @@ export const PricingCards = () => {
   const handleStartAgent = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
-      const session = await conversation.startSession({
+      const conversationId = await conversation.startSession({
         agentId: "0gLnzcbTHPrgMkiYcNFr",
-      }) as SessionResponse;
+      });
+      
+      const session: SessionResponse = {
+        conversation_id: conversationId
+      };
       
       setConversationId(session.conversation_id);
     } catch (error) {
