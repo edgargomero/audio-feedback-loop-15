@@ -2,8 +2,9 @@
 export async function convertWebmToMp3(webmBlob: Blob): Promise<Blob> {
   return new Promise(async (resolve, reject) => {
     try {
-      // Crear un AudioContext
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      // Crear un AudioContext con manejo correcto de tipos
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContextClass();
       
       // Convertir el blob a ArrayBuffer
       const arrayBuffer = await webmBlob.arrayBuffer();
