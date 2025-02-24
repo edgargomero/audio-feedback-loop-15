@@ -20,17 +20,31 @@ export const useAudioRecorder = () => {
   };
 
   const getSupportedMimeType = (): string => {
+    // Lista de formatos soportados por el backend, en orden de preferencia
     const preferredTypes = [
-      'audio/wav',
-      'audio/mpeg',
-      'audio/aac',
-      'audio/ogg',
-      'audio/mp4',
+      'audio/wav',  // WAV
+      'audio/mpeg', // MP3
+      'audio/aac',  // AAC
+      'audio/ogg',  // OGG
+      'audio/mp4'   // M4A
     ];
 
     for (const type of preferredTypes) {
       if (MediaRecorder.isTypeSupported(type)) {
-        console.log('Formato de audio seleccionado:', type);
+        console.log('Formato de audio soportado encontrado:', type);
+        return type;
+      }
+    }
+
+    // Si ninguno de los formatos preferidos es soportado, intentamos variantes comunes
+    const fallbackTypes = [
+      'audio/webm;codecs=pcm',
+      'audio/webm;codecs=opus'
+    ];
+
+    for (const type of fallbackTypes) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        console.log('Usando formato fallback:', type);
         return type;
       }
     }
@@ -44,12 +58,14 @@ export const useAudioRecorder = () => {
       if (!sessionStarted) return;
 
       const supportedType = getSupportedMimeType();
-      console.log('Intentando iniciar grabación con formato:', supportedType);
+      console.log('Iniciando grabación con formato:', supportedType);
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           channelCount: 1,
           sampleRate: 44100,
+          echoCancellation: true,
+          noiseSuppression: true
         } 
       });
       
@@ -62,7 +78,10 @@ export const useAudioRecorder = () => {
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          console.log('Chunk recibido con tipo:', event.data.type);
+          console.log('Chunk de audio recibido:', {
+            tipo: event.data.type,
+            tamaño: event.data.size
+          });
           audioChunksRef.current.push(event.data);
         }
       };
@@ -89,7 +108,14 @@ export const useAudioRecorder = () => {
           console.log('Finalizando grabación con formato:', mimeType);
           
           const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-          const extension = mimeType.split('/')[1];
+          
+          // Determinar la extensión correcta basada en el tipo MIME
+          let extension = 'wav'; // por defecto
+          if (mimeType.includes('mpeg')) extension = 'mp3';
+          else if (mimeType.includes('aac')) extension = 'aac';
+          else if (mimeType.includes('ogg')) extension = 'ogg';
+          else if (mimeType.includes('mp4')) extension = 'm4a';
+          
           console.log('Usando extensión:', extension);
           
           const file = new File([audioBlob], `recording.${extension}`, { type: mimeType });
