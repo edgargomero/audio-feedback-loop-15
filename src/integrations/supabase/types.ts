@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -10,16 +9,180 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      audio_files: {
+        Row: {
+          created_at: string | null
+          file_path: string
+          file_url: string | null
+          filename: string
+          id: string
+          status: string | null
+          updated_at: string | null
+          webhook_response: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_path: string
+          file_url?: string | null
+          filename: string
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+          webhook_response?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          file_path?: string
+          file_url?: string | null
+          filename?: string
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+          webhook_response?: Json | null
+        }
+        Relationships: []
+      }
+      conversation_evaluations: {
+        Row: {
+          created_at: string | null
+          feedback_notes: string | null
+          id: string
+          score: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          feedback_notes?: string | null
+          id?: string
+          score?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          feedback_notes?: string | null
+          id?: string
+          score?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      response_satisfaction: {
+        Row: {
+          created_at: string | null
+          feedback_comment: string | null
+          id: string
+          response_text: string
+          satisfaction_score: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          feedback_comment?: string | null
+          id?: string
+          response_text: string
+          satisfaction_score?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          feedback_comment?: string | null
+          id?: string
+          response_text?: string
+          satisfaction_score?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transcriptions: {
+        Row: {
+          audio_url: string | null
+          created_at: string | null
+          id: string
+          text: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          text: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string | null
+          id?: string
+          text?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          user_id: string
+          role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "basic" | "medium" | "enterprise" | "admin" | "superadmin"
     }
     CompositeTypes: {
       [_ in never]: never
