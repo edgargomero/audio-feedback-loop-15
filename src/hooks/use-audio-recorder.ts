@@ -12,12 +12,83 @@ export const useAudioRecorder = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
-  const { setFeedback } = useSalesAnalysis();
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleStartRecording = async (startSession: () => Promise<boolean>) => {
+    try {
+      const sessionStarted = await startSession();
+      if (!sessionStarted) return;
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: 'audio/webm'
+      });
+      
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      startProgressAndTime();
+
+    } catch (error) {
+      console.error("Error al acceder al micrófono:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo acceder al micrófono ❌",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStopRecording = async () => {
+    if (mediaRecorderRef.current && isRecording) {
+      return new Promise<File>((resolve) => {
+        mediaRecorderRef.current!.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          
+          // Convertir WebM a MP3 usando un AudioContext
+          const audioContext = new AudioContext();
+          const audioBuffer = await audioBlob.arrayBuffer();
+          const audioData = await audioContext.decodeAudioData(audioBuffer);
+          
+          // Crear un nuevo AudioBuffer para MP3
+          const offlineContext = new OfflineAudioContext(
+            audioData.numberOfChannels,
+            audioData.length,
+            audioData.sampleRate
+          );
+          
+          const source = offlineContext.createBufferSource();
+          source.buffer = audioData;
+          source.connect(offlineContext.destination);
+          source.start();
+          
+          const renderedBuffer = await offlineContext.startRendering();
+          const mp3Blob = new Blob(
+            [Int8Array.from(renderedBuffer.getChannelData(0))],
+            { type: 'audio/mp3' }
+          );
+          
+          const file = new File([mp3Blob], 'recording.mp3', { type: 'audio/mp3' });
+          resolve(file);
+        };
+        
+        mediaRecorderRef.current!.stop();
+        mediaRecorderRef.current!.stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+        stopProgressAndTime();
+      });
+    }
+    return Promise.reject('No hay grabación activa');
   };
 
   const startProgressAndTime = () => {
@@ -40,56 +111,9 @@ export const useAudioRecorder = () => {
   };
 
   const stopProgressAndTime = () => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-    }
-    if (timeInterval.current) {
-      clearInterval(timeInterval.current);
-    }
+    if (progressInterval.current) clearInterval(progressInterval.current);
+    if (timeInterval.current) clearInterval(timeInterval.current);
     setProgressValue(100);
-  };
-
-  const handleStartRecording = async (onAudioAvailable: (file: File) => void) => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      audioChunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
-        onAudioAvailable(file);
-      };
-
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-      startProgressAndTime();
-      setFeedback({
-        type: "neutral",
-        message: "Grabando... 🎤",
-        stage: 1
-      });
-    } catch (error) {
-      console.error("Error al acceder al micrófono:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo acceder al micrófono ❌",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleStopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
-      stopProgressAndTime();
-    }
   };
 
   return {

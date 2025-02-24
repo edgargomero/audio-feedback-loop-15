@@ -11,6 +11,7 @@ import { ResultSection } from "./audio/ResultSection";
 import { useRecordingSession } from "../hooks/use-recording-session";
 import { useAudioRecorder } from "../hooks/use-audio-recorder";
 import { useAudioUpload } from "../hooks/use-audio-upload";
+import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
 
 export const AudioFeedback = () => {
   const { feedback, setFeedback } = useSalesAnalysis();
@@ -22,8 +23,11 @@ export const AudioFeedback = () => {
     toast
   } = useAudioRecorderState();
   const [evaluationHtml, setEvaluationHtml] = useState<string | null>(null);
-  const { handleStartRecording, handleStopRecording } = useAudioRecorder();
   const { handleFileUpload: handleUpload } = useAudioUpload();
+  const { 
+    handleStartRecording, 
+    handleStopRecording 
+  } = useAudioRecorder();
 
   const cancelProcessing = () => {
     if (refs.processingInterval.current) clearInterval(refs.processingInterval.current);
@@ -47,8 +51,7 @@ export const AudioFeedback = () => {
         } else {
           setters.setAnalysisResult(result);
         }
-      },
-      toast
+      }
     );
   };
 
@@ -83,16 +86,23 @@ export const AudioFeedback = () => {
     });
   };
 
-  const onToggleRecording = () => {
+  const onToggleRecording = async () => {
     if (state.isRecording) {
-      handleStopRecording(startProcessing);
+      const audioFile = await handleStopRecording();
+      if (audioFile) {
+        const publicUrl = await uploadToSupabase(audioFile);
+        if (publicUrl) {
+          await sendToMakeWebhook(publicUrl, true);
+          startProcessing();
+        }
+      }
     } else {
-      handleStartRecording(sessionActive, startSession);
+      await handleStartRecording(startSession);
     }
   };
 
   const onFileUpload = (file: File) => {
-    handleUpload(file, sessionActive, startSession, startProcessing);
+    handleUpload(file);
   };
 
   return (
@@ -126,4 +136,3 @@ export const AudioFeedback = () => {
     </Card>
   );
 };
-
