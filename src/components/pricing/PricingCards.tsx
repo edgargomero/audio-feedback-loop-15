@@ -15,6 +15,10 @@ import { plans, PLAN_HANDLERS } from "@/config/planConfig";
 import { PricingCard } from "./PricingCard";
 import { setConversationId } from "@/utils/conversationState";
 
+interface SessionResponse {
+  conversation_id: string;
+}
+
 export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -221,11 +225,9 @@ export const PricingCards = () => {
       await navigator.mediaDevices.getUserMedia({ audio: true });
       const session = await conversation.startSession({
         agentId: "0gLnzcbTHPrgMkiYcNFr",
-      });
+      }) as SessionResponse;
       
-      if (session?.conversation_id) {
-        setConversationId(session.conversation_id);
-      }
+      setConversationId(session.conversation_id);
     } catch (error) {
       console.error("Error al acceder al micrófono:", error);
       toast({
