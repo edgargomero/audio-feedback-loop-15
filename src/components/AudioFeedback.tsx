@@ -203,8 +203,9 @@ export const AudioFeedback = () => {
     }
 
     // Ahora podemos hacer la verificación del tipo de objeto y la propiedad url
-    if (typeof state.analysisResult === 'object' && 'url' in state.analysisResult) {
-      const pdfUrl = state.analysisResult.url;
+    const result = state.analysisResult;
+    if (typeof result === 'object' && result !== null && 'url' in result) {
+      const pdfUrl = result.url;
       console.log('📥 Descargando PDF desde:', pdfUrl);
       window.open(pdfUrl, '_blank');
       toast({
