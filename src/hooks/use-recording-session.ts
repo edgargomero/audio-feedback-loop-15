@@ -24,11 +24,15 @@ export const useRecordingSession = () => {
   });
 
   useEffect(() => {
+    // Limpiar id_conversation_medio al montar el componente
+    localStorage.removeItem('id_conversation_medio');
+    
     return () => {
       if (sessionTimer) {
         clearTimeout(sessionTimer);
       }
       clearConversationId();
+      localStorage.removeItem('id_conversation_medio');
     };
   }, [sessionTimer]);
 
