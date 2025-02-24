@@ -189,6 +189,33 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_conversations: {
+        Row: {
+          ai_response: string | null
+          audio_url: string | null
+          created_at: string
+          id: string
+          status: string
+          user_query: string
+        }
+        Insert: {
+          ai_response?: string | null
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          user_query: string
+        }
+        Update: {
+          ai_response?: string | null
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          user_query?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
