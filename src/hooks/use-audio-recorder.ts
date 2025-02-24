@@ -5,7 +5,7 @@ import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
 import { convertWebmToMp3 } from "../utils/audioConverter";
 
 export const useAudioRecorder = () => {
-  console.log('🎯 Hook useAudioRecorder inicializado'); // Log inicial para verificar que el hook se está usando
+  console.log('🎯 Hook useAudioRecorder inicializado');
 
   const [isRecording, setIsRecording] = useState(false);
   const [progressValue, setProgressValue] = useState(0);
@@ -23,11 +23,11 @@ export const useAudioRecorder = () => {
   };
 
   const handleStartRecording = async (startSession: () => Promise<boolean>) => {
-    console.log('⚡ Función handleStartRecording llamada'); // Log para verificar que la función se llama
+    console.log('⚡ Función handleStartRecording llamada');
     try {
       const sessionStarted = await startSession();
       if (!sessionStarted) {
-        console.log('❌ Sesión no iniciada'); // Log cuando la sesión no inicia
+        console.log('❌ Sesión no iniciada');
         return;
       }
       
@@ -106,9 +106,15 @@ export const useAudioRecorder = () => {
               tamaño: (wavBlob.size / 1024).toFixed(2) + ' KB'
             });
             
-            // Crear el archivo final
-            const file = new File([wavBlob], 'recording.wav', { type: 'audio/wav' });
-            console.log('📄 Archivo WAV creado y listo para subir');
+            // Crear el archivo final con extensión .wav
+            const timestamp = new Date().getTime();
+            const file = new File([wavBlob], `recording_${timestamp}.wav`, { type: 'audio/wav' });
+            console.log('📄 Archivo WAV creado y listo para subir:', {
+              nombre: file.name,
+              tipo: file.type,
+              tamaño: (file.size / 1024).toFixed(2) + ' KB'
+            });
+            
             resolve(file);
             
           } catch (error) {
@@ -167,3 +173,4 @@ export const useAudioRecorder = () => {
     handleStopRecording,
   };
 };
+
