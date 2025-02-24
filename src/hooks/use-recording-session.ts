@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useConversation } from "@11labs/react";
-import { setConversationId, clearConversationId } from "../utils/conversationState";
+import { setConversationId } from "../utils/conversationState";
 import { useToast } from "./use-toast";
 
 export const useRecordingSession = () => {
@@ -38,11 +38,12 @@ export const useRecordingSession = () => {
         agentId: "0gLnzcbTHPrgMkiYcNFr",
       });
       
-      const session = {
-        conversation_id: conversationId
-      };
+      // Guardamos el ID global sin modificar
+      setConversationId(conversationId);
       
-      setConversationId(session.conversation_id);
+      // Guardamos el id_conversation_medio para el webhook
+      localStorage.setItem('id_conversation_medio', conversationId);
+      
       setSessionActive(true);
 
       const timer = setTimeout(() => {
@@ -65,6 +66,7 @@ export const useRecordingSession = () => {
   const endSession = () => {
     setSessionActive(false);
     clearConversationId();
+    localStorage.removeItem('id_conversation_medio');
     if (sessionTimer) {
       clearTimeout(sessionTimer);
       setSessionTimer(null);
@@ -81,3 +83,4 @@ export const useRecordingSession = () => {
     endSession
   };
 };
+

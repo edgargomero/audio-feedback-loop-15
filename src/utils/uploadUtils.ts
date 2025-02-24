@@ -82,8 +82,9 @@ export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean =
     const webhookUrl = isRecording ? MAKE_RECORDING_WEBHOOK_URL : MAKE_WEBHOOK_URL;
     console.log(`Enviando URL al webhook (${isRecording ? 'grabación' : 'archivo'}):`, audioUrl);
 
-    const conversationId = localStorage.getItem('id_conversation_medio');
-    console.log('ID de conversación a enviar:', conversationId);
+    // Obtener id_conversation_medio de localStorage
+    const id_conversation_medio = localStorage.getItem('id_conversation_medio');
+    console.log('ID de conversación Make a enviar:', id_conversation_medio);
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -92,7 +93,7 @@ export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean =
       },
       body: JSON.stringify({ 
         audioUrl,
-        conversationId,
+        conversationId: id_conversation_medio, // Enviamos específicamente id_conversation_medio
         source: isRecording ? 'recording' : 'upload'
       }),
     });
@@ -114,3 +115,4 @@ export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean =
     return false;
   }
 };
+
