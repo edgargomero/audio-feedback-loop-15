@@ -23,6 +23,8 @@ export const EvaluationDisplay = ({ htmlContent }: EvaluationDisplayProps) => {
         title="Evaluación de llamada"
         sandbox="allow-same-origin allow-scripts"
         allow="fullscreen"
+        // Restringimos los permisos para no permitir reproducción de audio
+        security="restricted"
       />
     </div>
   );
