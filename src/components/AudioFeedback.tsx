@@ -52,7 +52,7 @@ export const AudioFeedback = () => {
           setters.setAnalysisResult(result);
         }
       },
-      toast // Add toast as the fifth argument
+      toast
     );
   };
 
@@ -137,4 +137,3 @@ export const AudioFeedback = () => {
     </Card>
   );
 };
-

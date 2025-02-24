@@ -1,6 +1,7 @@
 
 import { useState, useRef } from "react";
 import { useToast } from "./use-toast";
+import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
 
 export const useAudioRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -124,4 +125,3 @@ export const useAudioRecorder = () => {
     handleStopRecording,
   };
 };
-
