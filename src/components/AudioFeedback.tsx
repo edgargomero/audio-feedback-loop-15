@@ -3,21 +3,17 @@ import { Card } from "./ui/card";
 import { Tabs } from "./ui/tabs";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
 import { useAudioRecorderState } from "../hooks/use-audio-recorder-state";
-import { startProgressAndTime, stopProgressAndTime, startProcessingCountdown } from "../utils/progressUtils";
+import { startProcessingCountdown } from "../utils/progressUtils";
 import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { TabsSection } from "./audio/TabsSection";
 import { ProcessingSection } from "./audio/ProcessingSection";
 import { ResultSection } from "./audio/ResultSection";
-import { useConversation } from "@11labs/react";
-import { setConversationId, clearConversationId } from "../utils/conversationState";
-
-interface SessionResponse {
-  conversation_id: string;
-}
+import { useRecordingSession } from "../hooks/use-recording-session";
 
 export const AudioFeedback = () => {
   const { feedback, setFeedback } = useSalesAnalysis();
+  const { sessionActive, startSession } = useRecordingSession();
   const {
     state,
     setters,
@@ -25,200 +21,37 @@ export const AudioFeedback = () => {
     toast
   } = useAudioRecorderState();
   const [evaluationHtml, setEvaluationHtml] = useState<string | null>(null);
-  const [sessionActive, setSessionActive] = useState(false);
-  const [sessionTimer, setSessionTimer] = useState<NodeJS.Timeout | null>(null);
-
-  const conversation = useConversation({
-    onMessage: (message) => {
-      console.log("Mensaje recibido:", message);
-    },
-    onError: (error) => {
-      console.error("Error en la conversación:", error);
-      toast({
-        title: "Error",
-        description: "Error de conexión con el agente",
-        variant: "destructive",
-      });
-    }
-  });
-
-  useEffect(() => {
-    return () => {
-      if (sessionTimer) {
-        clearTimeout(sessionTimer);
-      }
-      clearConversationId();
-    };
-  }, [sessionTimer]);
-
-  const startRecordingSession = async () => {
-    try {
-      const conversationId = await conversation.startSession({
-        agentId: "0gLnzcbTHPrgMkiYcNFr",
-      });
-      
-      const session: SessionResponse = {
-        conversation_id: conversationId
-      };
-      
-      setConversationId(session.conversation_id);
-      setSessionActive(true);
-
-      // Configurar el temporizador de 120 segundos para la sesión
-      const timer = setTimeout(() => {
-        setSessionActive(false);
-        clearConversationId();
-        if (state.isRecording) {
-          handleStopRecording();
-        }
-        toast({
-          title: "Sesión finalizada",
-          description: "La sesión de 120 segundos ha terminado",
-        });
-      }, 120000);
-
-      setSessionTimer(timer);
-      return true;
-    } catch (error) {
-      console.error("Error al iniciar la sesión:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo iniciar la sesión",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
 
   const cancelProcessing = () => {
     if (refs.processingInterval.current) clearInterval(refs.processingInterval.current);
     setters.setIsProcessing(false);
     setters.setProgressValue(0);
-    if (sessionTimer) {
-      clearTimeout(sessionTimer);
-      setSessionTimer(null);
-    }
-    clearConversationId();
-    setSessionActive(false);
     toast({
       title: "Procesamiento cancelado",
       description: "Se ha cancelado el procesamiento del audio",
     });
   };
 
-  const handleStartRecording = async () => {
-    // Si no hay sesión activa, iniciarla primero
-    if (!sessionActive) {
-      const sessionStarted = await startRecordingSession();
-      if (!sessionStarted) return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      state.mediaRecorderRef.current = new MediaRecorder(stream);
-      state.audioChunksRef.current = [];
-
-      state.mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          state.audioChunksRef.current.push(event.data);
+  const startProcessing = () => {
+    startProcessingCountdown(
+      setters.setIsProcessing,
+      setters.setProcessingTimeLeft,
+      refs.processingInterval,
+      (result) => {
+        if (typeof result === 'string' && result.includes('<!DOCTYPE html>')) {
+          setEvaluationHtml(result);
+          setters.setAnalysisResult(null);
+        } else {
+          setters.setAnalysisResult(result);
         }
-      };
-
-      state.mediaRecorderRef.current.onstop = async () => {
-        try {
-          if (state.audioChunksRef.current.length === 0) {
-            throw new Error('No se grabó ningún audio');
-          }
-
-          const audioBlob = new Blob(state.audioChunksRef.current, { type: 'audio/webm' });
-          
-          setFeedback({
-            type: "neutral",
-            message: "Subiendo grabación... 📤",
-            stage: 1
-          });
-
-          const publicUrl = await uploadToSupabase(audioBlob);
-          
-          if (!publicUrl) {
-            throw new Error('Error al obtener la URL pública');
-          }
-          
-          const webhookSuccess = await sendToMakeWebhook(publicUrl, true);
-          
-          if (!webhookSuccess) {
-            throw new Error('Error al procesar en Make');
-          }
-
-          setFeedback({
-            type: "positive",
-            message: "Grabación enviada a procesar... ⚙️",
-            stage: 1
-          });
-
-          startProcessingCountdown(
-            setters.setIsProcessing,
-            setters.setProcessingTimeLeft,
-            refs.processingInterval,
-            setters.setAnalysisResult,
-            toast
-          );
-
-        } catch (error) {
-          console.error('Error al procesar la grabación:', error);
-          setFeedback({
-            type: "negative",
-            message: "Error al procesar la grabación ❌",
-            stage: 1
-          });
-          toast({
-            title: "Error",
-            description: "Error al procesar la grabación",
-            variant: "destructive",
-          });
-        }
-      };
-
-      state.mediaRecorderRef.current.start();
-      setters.setIsRecording(true);
-      startProgressAndTime(
-        setters.setProgressValue,
-        setters.setRecordingTime,
-        refs.progressInterval,
-        refs.timeInterval
-      );
-      setFeedback({
-        type: "neutral",
-        message: "Grabando... 🎤",
-        stage: 1
-      });
-    } catch (error) {
-      console.error("Error al acceder al micrófono:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo acceder al micrófono ❌",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleStopRecording = () => {
-    if (state.mediaRecorderRef.current && state.isRecording) {
-      state.mediaRecorderRef.current.stop();
-      state.mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setters.setIsRecording(false);
-      stopProgressAndTime(
-        refs.progressInterval,
-        refs.timeInterval,
-        setters.setProgressValue
-      );
-    }
+      },
+      toast
+    );
   };
 
   const handleFileUpload = async (file: File) => {
-    // Si no hay sesión activa, iniciarla primero
     if (!sessionActive) {
-      const sessionStarted = await startRecordingSession();
+      const sessionStarted = await startSession();
       if (!sessionStarted) return;
     }
 
@@ -230,7 +63,6 @@ export const AudioFeedback = () => {
       });
       
       const audioBlob = new Blob([file], { type: file.type });
-      
       const publicUrl = await uploadToSupabase(audioBlob);
       
       if (!publicUrl) {
@@ -249,20 +81,7 @@ export const AudioFeedback = () => {
         stage: 1
       });
       
-      startProcessingCountdown(
-        setters.setIsProcessing,
-        setters.setProcessingTimeLeft,
-        refs.processingInterval,
-        (result) => {
-          if (typeof result === 'string' && result.includes('<!DOCTYPE html>')) {
-            setEvaluationHtml(result);
-            setters.setAnalysisResult(null);
-          } else {
-            setters.setAnalysisResult(result);
-          }
-        },
-        toast
-      );
+      startProcessing();
 
     } catch (error) {
       console.error("Error en el proceso de subida:", error);
@@ -341,4 +160,3 @@ export const AudioFeedback = () => {
     </Card>
   );
 };
-
