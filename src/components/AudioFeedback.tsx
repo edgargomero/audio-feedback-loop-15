@@ -4,13 +4,13 @@ import { Tabs } from "./ui/tabs";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
 import { useAudioRecorderState } from "../hooks/use-audio-recorder-state";
 import { startProcessingCountdown } from "../utils/progressUtils";
-import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
 import { useState } from "react";
 import { TabsSection } from "./audio/TabsSection";
 import { ProcessingSection } from "./audio/ProcessingSection";
 import { ResultSection } from "./audio/ResultSection";
 import { useRecordingSession } from "../hooks/use-recording-session";
-import { setConversationId } from "../utils/conversationState";
+import { useAudioRecorder } from "../hooks/use-audio-recorder";
+import { useAudioUpload } from "../hooks/use-audio-upload";
 
 export const AudioFeedback = () => {
   const { feedback, setFeedback } = useSalesAnalysis();
@@ -22,140 +22,8 @@ export const AudioFeedback = () => {
     toast
   } = useAudioRecorderState();
   const [evaluationHtml, setEvaluationHtml] = useState<string | null>(null);
-
-  const handleStartRecording = async () => {
-    if (!sessionActive) {
-      const sessionStarted = await startSession();
-      if (!sessionStarted) return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      state.mediaRecorderRef.current = new MediaRecorder(stream);
-      state.audioChunksRef.current = [];
-
-      state.mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          state.audioChunksRef.current.push(event.data);
-        }
-      };
-
-      state.mediaRecorderRef.current.start();
-      setters.setIsRecording(true);
-      setFeedback({
-        type: "neutral",
-        message: "Grabando... 🎤",
-        stage: 1
-      });
-    } catch (error) {
-      console.error("Error al acceder al micrófono:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo acceder al micrófono ❌",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleStopRecording = async () => {
-    if (state.mediaRecorderRef.current && state.isRecording) {
-      state.mediaRecorderRef.current.stop();
-      state.mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setters.setIsRecording(false);
-
-      try {
-        const audioBlob = new Blob(state.audioChunksRef.current, { type: 'audio/webm' });
-        
-        setFeedback({
-          type: "neutral",
-          message: "Subiendo grabación... 📤",
-          stage: 1
-        });
-
-        const publicUrl = await uploadToSupabase(audioBlob);
-        
-        if (!publicUrl) {
-          throw new Error('Error al obtener la URL pública');
-        }
-        
-        const webhookSuccess = await sendToMakeWebhook(publicUrl, true);
-        
-        if (!webhookSuccess) {
-          throw new Error('Error al procesar en Make');
-        }
-
-        setFeedback({
-          type: "positive",
-          message: "Grabación enviada a procesar... ⚙️",
-          stage: 1
-        });
-
-        startProcessing();
-
-      } catch (error) {
-        console.error('Error al procesar la grabación:', error);
-        setFeedback({
-          type: "negative",
-          message: "Error al procesar la grabación ❌",
-          stage: 1
-        });
-        toast({
-          title: "Error",
-          description: "Error al procesar la grabación",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  const handleFileUpload = async (file: File) => {
-    if (!sessionActive) {
-      const sessionStarted = await startSession();
-      if (!sessionStarted) return;
-    }
-
-    try {
-      setFeedback({
-        type: "neutral",
-        message: "Subiendo archivo... 📤",
-        stage: 1
-      });
-      
-      const audioBlob = new Blob([file], { type: file.type });
-      const publicUrl = await uploadToSupabase(audioBlob);
-      
-      if (!publicUrl) {
-        throw new Error('Error al obtener la URL pública');
-      }
-      
-      const webhookSuccess = await sendToMakeWebhook(publicUrl, false);
-      
-      if (!webhookSuccess) {
-        throw new Error('Error al procesar en Make');
-      }
-
-      setFeedback({
-        type: "positive",
-        message: "Archivo enviado a procesar... ⚙️",
-        stage: 1
-      });
-      
-      startProcessing();
-
-    } catch (error) {
-      console.error("Error en el proceso de subida:", error);
-      setFeedback({
-        type: "negative",
-        message: "Error en el proceso ❌",
-        stage: 1
-      });
-      toast({
-        title: "Error",
-        description: "Error al procesar el archivo ❌",
-        variant: "destructive",
-      });
-    }
-  };
+  const { handleStartRecording, handleStopRecording } = useAudioRecorder();
+  const { handleFileUpload: handleUpload } = useAudioUpload();
 
   const cancelProcessing = () => {
     if (refs.processingInterval.current) clearInterval(refs.processingInterval.current);
@@ -215,16 +83,28 @@ export const AudioFeedback = () => {
     });
   };
 
+  const onToggleRecording = () => {
+    if (state.isRecording) {
+      handleStopRecording(startProcessing);
+    } else {
+      handleStartRecording(sessionActive, startSession);
+    }
+  };
+
+  const onFileUpload = (file: File) => {
+    handleUpload(file, sessionActive, startSession, startProcessing);
+  };
+
   return (
     <Card className="p-6 max-w-3xl mx-auto mt-10 shadow-lg bg-white dark:bg-gray-800">
       <h2 className="text-2xl font-semibold mb-6 text-center">Subir Archivo de Audio</h2>
       <Tabs defaultValue="upload" className="w-full">
         <TabsSection 
           isRecording={state.isRecording}
-          onToggleRecording={state.isRecording ? handleStopRecording : handleStartRecording}
+          onToggleRecording={onToggleRecording}
           progressValue={state.progressValue}
           recordingTime={state.recordingTime}
-          onFileUpload={handleFileUpload}
+          onFileUpload={onFileUpload}
         />
       </Tabs>
 
