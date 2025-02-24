@@ -22,7 +22,9 @@ export const EvaluationDisplay = ({ htmlContent }: EvaluationDisplayProps) => {
         className="w-full min-h-[600px] border rounded-lg bg-white"
         title="Evaluación de llamada"
         sandbox="allow-same-origin allow-scripts"
+        allow="fullscreen"
       />
     </div>
   );
 };
+
