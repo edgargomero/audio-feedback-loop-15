@@ -3,20 +3,20 @@ import { supabase } from "../integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { MAKE_WEBHOOK_URL, MAKE_RECORDING_WEBHOOK_URL } from "./constants";
 
-export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> => {
+export const uploadToSupabase = async (audioFile: File | Blob): Promise<string | null> => {
   const BUCKET_NAME = "audio_chunks";
   
   try {
     console.log('Iniciando proceso de subida:', {
       bucketName: BUCKET_NAME,
-      blobTipo: audioBlob.type,
-      blobTamaño: audioBlob.size
+      tipo: audioFile.type,
+      tamaño: audioFile.size
     });
 
     // Generate unique filename with correct extension based on MIME type
     const timestamp = new Date().getTime();
     const randomString = Math.random().toString(36).substring(7);
-    const fileExtension = getFileExtension(audioBlob.type);
+    const fileExtension = getFileExtension(audioFile.type);
     const fileName = `audio-${timestamp}-${randomString}.${fileExtension}`;
 
     console.log('Preparando subida con nombre de archivo:', fileName);
@@ -24,10 +24,10 @@ export const uploadToSupabase = async (audioBlob: Blob): Promise<string | null> 
     // Upload file to Supabase
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
-      .upload(fileName, audioBlob, {
+      .upload(fileName, audioFile, {
         cacheControl: '3600',
         upsert: false,
-        contentType: audioBlob.type
+        contentType: audioFile.type
       });
 
     if (uploadError) {
@@ -74,7 +74,7 @@ const getFileExtension = (mimeType: string): string => {
     'audio/webm': 'webm'
   };
 
-  return mimeToExt[mimeType] || 'mp3';
+  return mimeToExt[mimeType] || 'wav';
 };
 
 export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean = false): Promise<boolean> => {
@@ -93,7 +93,7 @@ export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean =
       },
       body: JSON.stringify({ 
         audioUrl,
-        conversationId: id_conversation_medio, // Será una cadena vacía si no hay sesión activa
+        conversationId: id_conversation_medio,
         source: isRecording ? 'recording' : 'upload'
       }),
     });

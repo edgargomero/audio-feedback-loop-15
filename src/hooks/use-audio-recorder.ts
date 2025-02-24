@@ -106,16 +106,17 @@ export const useAudioRecorder = () => {
               tamaño: (wavBlob.size / 1024).toFixed(2) + ' KB'
             });
             
-            // Crear el archivo final con extensión .wav
+            // Crear el archivo final con formato WAV
             const timestamp = new Date().getTime();
-            const file = new File([wavBlob], `recording_${timestamp}.wav`, { type: 'audio/wav' });
-            console.log('📄 Archivo WAV creado y listo para subir:', {
-              nombre: file.name,
-              tipo: file.type,
-              tamaño: (file.size / 1024).toFixed(2) + ' KB'
+            const filename = `recording_${timestamp}.wav`;
+            const wavFile = new File([wavBlob], filename, { type: 'audio/wav' });
+            console.log('📄 Archivo WAV creado:', {
+              nombre: wavFile.name,
+              tipo: wavFile.type,
+              tamaño: (wavFile.size / 1024).toFixed(2) + ' KB'
             });
             
-            resolve(file);
+            resolve(wavFile);
             
           } catch (error) {
             console.error('❌ Error al procesar el audio:', error);
@@ -173,4 +174,3 @@ export const useAudioRecorder = () => {
     handleStopRecording,
   };
 };
-
