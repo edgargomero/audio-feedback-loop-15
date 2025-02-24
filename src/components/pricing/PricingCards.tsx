@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -289,9 +289,12 @@ export const PricingCards = () => {
       </div>
 
       <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent aria-describedby="upload-modal-description">
           <DialogHeader>
             <DialogTitle>Subir o Grabar Audio</DialogTitle>
+            <DialogDescription id="upload-modal-description">
+              Selecciona un archivo de audio para subir o graba uno nuevo.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
             <Tabs defaultValue="upload" className="w-full">
@@ -355,9 +358,12 @@ export const PricingCards = () => {
         if (!open) handleStopAgent();
         setIsAgentModalOpen(open);
       }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent aria-describedby="agent-modal-description">
           <DialogHeader>
             <DialogTitle>Conversación con el Agente</DialogTitle>
+            <DialogDescription id="agent-modal-description">
+              Interactúa con nuestro agente inteligente para analizar tu audio.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-6">
             <ScrollArea className="h-[400px] p-4 rounded-md border">
