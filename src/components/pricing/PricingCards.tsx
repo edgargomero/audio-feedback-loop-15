@@ -1,18 +1,11 @@
-import { useState, useRef, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { FileDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+
+import { useState, useRef } from "react";
 import { useConversation } from "@11labs/react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChatMessage } from "../chat/ChatMessage";
-import { UploadButton } from "../audio/UploadButton";
-import { RecordButton } from "../audio/RecordButton";
-import { ProcessingCountdown } from "../audio/ProcessingCountdown";
-import { plans, PLAN_HANDLERS } from "@/config/planConfig";
+import { useToast } from "@/hooks/use-toast";
 import { PricingCard } from "./PricingCard";
+import { UploadModal } from "./modals/UploadModal";
+import { AgentModal } from "./modals/AgentModal";
+import { plans, PLAN_HANDLERS } from "@/config/planConfig";
 import { setConversationId } from "@/utils/conversationState";
 
 interface SessionResponse {
@@ -23,15 +16,8 @@ export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [progressValue, setProgressValue] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingTimeLeft, setProcessingTimeLeft] = useState(120);
   const processingInterval = useRef<NodeJS.Timeout>();
-  const [pdfReady, setPdfReady] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const { toast } = useToast();
   
   const [messages, setMessages] = useState<Array<{
@@ -80,116 +66,27 @@ export const PricingCards = () => {
   });
 
   const startProcessingCountdown = () => {
-    setIsProcessing(true);
-    setProcessingTimeLeft(15);
-    setPdfReady(false);
-    setPdfUrl(null);
-
-    processingInterval.current = setInterval(() => {
-      setProcessingTimeLeft(prev => {
-        if (prev <= 0) {
-          clearInterval(processingInterval.current);
-          setIsProcessing(false);
-          setPdfReady(true);
-          setPdfUrl('https://ejemplo.com/analisis.pdf');
-          toast({
-            title: "¡Análisis completado!",
-            description: "PDF listo para descargar",
-          });
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    setProgressValue(0);
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 2;
+      setProgressValue(progress);
+      
+      if (progress >= 100) {
+        clearInterval(interval);
+        handleBackendReady();
+      }
+    }, 100);
   };
 
   const handleBackendReady = () => {
     if (processingInterval.current) {
       clearInterval(processingInterval.current);
     }
-    setIsProcessing(false);
-    setPdfReady(true);
-    setPdfUrl('https://ejemplo.com/analisis.pdf');
     toast({
       title: "¡Análisis completado!",
-      description: "PDF generado correctamente",
+      description: "Procesamiento finalizado correctamente",
     });
-  };
-
-  const handleDownloadPDF = () => {
-    if (pdfUrl) {
-      toast({
-        title: "Descargando PDF",
-        description: "Tu análisis se está descargando...",
-      });
-    }
-  };
-
-  const cancelProcessing = () => {
-    if (processingInterval.current) {
-      clearInterval(processingInterval.current);
-    }
-    setIsProcessing(false);
-    setProgressValue(0);
-    setProcessingTimeLeft(120);
-    setPdfReady(false);
-    setPdfUrl(null);
-    toast({
-      title: "Procesamiento cancelado",
-      description: "Se ha cancelado el procesamiento del audio",
-    });
-  };
-
-  useEffect(() => {
-    return () => {
-      if (processingInterval.current) {
-        clearInterval(processingInterval.current);
-      }
-    };
-  }, []);
-
-  const handleStartRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      audioChunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
-        handleFileUpload(file);
-      };
-
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-      toast({
-        title: "Grabación iniciada",
-        description: "Hablando...",
-      });
-    } catch (error) {
-      console.error("Error al iniciar la grabación:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo iniciar la grabación",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleStopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
-      toast({
-        title: "Grabación finalizada",
-        description: "Procesando audio...",
-      });
-    }
   };
 
   const handleFileUpload = (file: File) => {
@@ -201,16 +98,7 @@ export const PricingCards = () => {
         description: "Procesando el archivo de audio...",
       });
       
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 2;
-        setProgressValue(progress);
-        
-        if (progress >= 100) {
-          clearInterval(interval);
-          startProcessingCountdown();
-        }
-      }, 100);
+      startProcessingCountdown();
     } else {
       toast({
         title: "Error",
@@ -288,114 +176,18 @@ export const PricingCards = () => {
         ))}
       </div>
 
-      <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
-        <DialogContent 
-          aria-describedby="upload-modal-description"
-          className="sm:max-w-[425px]"
-        >
-          <DialogHeader>
-            <DialogTitle>Subir o Grabar Audio</DialogTitle>
-            <DialogDescription id="upload-modal-description">
-              Selecciona un archivo de audio para subir o graba uno nuevo.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 py-4">
-            <Tabs defaultValue="upload" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="upload">Subir Archivo</TabsTrigger>
-                <TabsTrigger value="record">Grabar Audio</TabsTrigger>
-              </TabsList>
-              <TabsContent value="upload" className="mt-4">
-                <UploadButton onFileUpload={handleFileUpload} />
-              </TabsContent>
-              <TabsContent value="record" className="mt-4">
-                <div className="flex flex-col items-center gap-4">
-                  <RecordButton
-                    isRecording={isRecording}
-                    onToggleRecording={isRecording ? handleStopRecording : handleStartRecording}
-                  />
-                  <p className="text-sm text-gray-500">
-                    {isRecording ? "Haz click para detener" : "Haz click para empezar a grabar"}
-                  </p>
-                </div>
-              </TabsContent>
-            </Tabs>
-            
-            {progressValue > 0 && progressValue < 100 && (
-              <div className="space-y-2">
-                <Progress value={progressValue} />
-                <p className="text-sm text-center text-gray-500">
-                  Procesando audio... {progressValue}%
-                </p>
-              </div>
-            )}
-            
-            {isProcessing && (
-              <div className="space-y-4">
-                <ProcessingCountdown
-                  timeLeft={processingTimeLeft}
-                  onCancel={cancelProcessing}
-                />
-              </div>
-            )}
+      <UploadModal 
+        isOpen={isUploadModalOpen}
+        onOpenChange={setIsUploadModalOpen}
+        onFileUpload={handleFileUpload}
+      />
 
-            {pdfReady && pdfUrl && (
-              <div className="flex flex-col items-center gap-4 pt-4">
-                <p className="text-sm text-green-600 font-medium">
-                  ¡Tu análisis está listo!
-                </p>
-                <Button
-                  onClick={handleDownloadPDF}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                >
-                  <FileDown className="mr-2 h-4 w-4" />
-                  Descargar PDF
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isAgentModalOpen} onOpenChange={(open) => {
-        if (!open) handleStopAgent();
-        setIsAgentModalOpen(open);
-      }}>
-        <DialogContent 
-          aria-describedby="agent-modal-description" 
-          className="max-w-4xl h-[600px]"
-        >
-          <DialogHeader>
-            <DialogTitle>Conversación con el Agente</DialogTitle>
-            <DialogDescription id="agent-modal-description">
-              Interactúa con nuestro agente inteligente para analizar tu audio.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-6">
-            <ScrollArea className="h-[400px] p-4 rounded-md border">
-              <div className="flex flex-col gap-4">
-                {messages.map((message, index) => (
-                  <ChatMessage
-                    key={index}
-                    message={message.text}
-                    isAgent={message.isAgent}
-                    feedback={message.feedback}
-                  />
-                ))}
-              </div>
-            </ScrollArea>
-            <div className="flex justify-center">
-              <Button 
-                onClick={handleStopAgent}
-                variant="destructive"
-                className="w-full max-w-xs"
-              >
-                Finalizar Conversación
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AgentModal 
+        isOpen={isAgentModalOpen}
+        onOpenChange={setIsAgentModalOpen}
+        messages={messages}
+        onStop={handleStopAgent}
+      />
     </div>
   );
 };
