@@ -13,6 +13,7 @@ import { RecordButton } from "../audio/RecordButton";
 import { ProcessingCountdown } from "../audio/ProcessingCountdown";
 import { plans, PLAN_HANDLERS } from "@/config/planConfig";
 import { PricingCard } from "./PricingCard";
+import { setConversationId } from "@/utils/conversationState";
 
 export const PricingCards = () => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -35,7 +36,6 @@ export const PricingCards = () => {
     feedback?: { emoji: string; phrase: string };
   }>>([]);
 
-  // Feedbacks de ejemplo para pruebas
   const feedbacks = [
     { emoji: "👍", phrase: "¡Buen tono de voz!" },
     { emoji: "🎯", phrase: "Excelente explicación" },
@@ -77,7 +77,7 @@ export const PricingCards = () => {
 
   const startProcessingCountdown = () => {
     setIsProcessing(true);
-    setProcessingTimeLeft(15); // Cambiado a 15 segundos para pruebas
+    setProcessingTimeLeft(15);
     setPdfReady(false);
     setPdfUrl(null);
 
@@ -114,7 +114,6 @@ export const PricingCards = () => {
 
   const handleDownloadPDF = () => {
     if (pdfUrl) {
-      // Aquí iría la lógica real de descarga del PDF
       toast({
         title: "Descargando PDF",
         description: "Tu análisis se está descargando...",
@@ -220,9 +219,13 @@ export const PricingCards = () => {
   const handleStartAgent = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
-      conversation.startSession({
-        agentId: "0gLnzcbTHPrgMkiYcNFr", // Actualizado al nuevo ID del agente
+      const session = await conversation.startSession({
+        agentId: "0gLnzcbTHPrgMkiYcNFr",
       });
+      
+      if (session?.conversation_id) {
+        setConversationId(session.conversation_id);
+      }
     } catch (error) {
       console.error("Error al acceder al micrófono:", error);
       toast({
