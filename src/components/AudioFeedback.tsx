@@ -1,3 +1,4 @@
+
 import { Card } from "./ui/card";
 import { Tabs } from "./ui/tabs";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
@@ -191,7 +192,18 @@ export const AudioFeedback = () => {
   };
 
   const handleDownloadPDF = () => {
-    if (state.analysisResult && typeof state.analysisResult === 'object' && 'url' in state.analysisResult) {
+    // Verificamos primero si analysisResult es null
+    if (!state.analysisResult) {
+      toast({
+        title: "Error",
+        description: "No hay análisis disponible",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Ahora podemos hacer la verificación del tipo de objeto y la propiedad url
+    if (typeof state.analysisResult === 'object' && 'url' in state.analysisResult) {
       const pdfUrl = state.analysisResult.url;
       console.log('📥 Descargando PDF desde:', pdfUrl);
       window.open(pdfUrl, '_blank');
