@@ -25,6 +25,7 @@ export const useAudioRecorder = () => {
       const sessionStarted = await startSession();
       if (!sessionStarted) return;
       
+      console.log('🎙️ Iniciando proceso de grabación...');
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           channelCount: 1,
@@ -35,25 +36,35 @@ export const useAudioRecorder = () => {
         } 
       });
       
+      console.log('🎤 Stream de audio obtenido:', {
+        tracks: stream.getAudioTracks().length,
+        settings: stream.getAudioTracks()[0].getSettings()
+      });
+      
       mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          console.log('Chunk de audio recibido:', {
+          console.log('📦 Chunk de audio recibido:', {
             tipo: event.data.type,
-            tamaño: event.data.size
+            tamaño: event.data.size + ' bytes'
           });
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorderRef.current.start(1000);
+      console.log('⚡ MediaRecorder iniciado con configuración:', {
+        mimeType: mediaRecorderRef.current.mimeType,
+        estado: mediaRecorderRef.current.state
+      });
+
       setIsRecording(true);
       startProgressAndTime();
 
     } catch (error) {
-      console.error("Error al iniciar la grabación:", error);
+      console.error("❌ Error al iniciar la grabación:", error);
       toast({
         title: "Error",
         description: "No se pudo iniciar la grabación de audio ❌",
@@ -64,23 +75,34 @@ export const useAudioRecorder = () => {
 
   const handleStopRecording = async () => {
     if (mediaRecorderRef.current && isRecording) {
+      console.log('🛑 Deteniendo grabación...');
       return new Promise<File>(async (resolve) => {
         mediaRecorderRef.current!.onstop = async () => {
           try {
+            console.log('🎯 Grabación detenida. Chunks recolectados:', audioChunksRef.current.length);
+            
             // Crear el blob de WebM inicial
             const webmBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-            console.log('Audio WebM creado:', { tamaño: webmBlob.size });
+            console.log('🎵 Audio WebM creado:', {
+              tipo: webmBlob.type,
+              tamaño: (webmBlob.size / 1024).toFixed(2) + ' KB'
+            });
             
             // Convertir WebM a WAV
+            console.log('🔄 Iniciando conversión a WAV...');
             const wavBlob = await convertWebmToMp3(webmBlob);
-            console.log('Audio convertido a WAV:', { tamaño: wavBlob.size });
+            console.log('✅ Audio convertido a WAV:', {
+              tipo: wavBlob.type,
+              tamaño: (wavBlob.size / 1024).toFixed(2) + ' KB'
+            });
             
             // Crear el archivo final
             const file = new File([wavBlob], 'recording.wav', { type: 'audio/wav' });
+            console.log('📄 Archivo WAV creado y listo para subir');
             resolve(file);
             
           } catch (error) {
-            console.error('Error al procesar el audio:', error);
+            console.error('❌ Error al procesar el audio:', error);
             toast({
               title: "Error",
               description: "Error al procesar el audio ❌",
@@ -90,7 +112,10 @@ export const useAudioRecorder = () => {
         };
         
         mediaRecorderRef.current!.stop();
-        mediaRecorderRef.current!.stream.getTracks().forEach(track => track.stop());
+        mediaRecorderRef.current!.stream.getTracks().forEach(track => {
+          track.stop();
+          console.log('🎚️ Pista de audio detenida:', track.label);
+        });
         setIsRecording(false);
         stopProgressAndTime();
       });

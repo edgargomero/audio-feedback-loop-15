@@ -2,15 +2,27 @@
 export async function convertWebmToMp3(webmBlob: Blob): Promise<Blob> {
   return new Promise(async (resolve, reject) => {
     try {
+      console.log('🔄 Iniciando proceso de conversión de audio...');
+      
       // Crear un AudioContext con manejo correcto de tipos
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContextClass();
+      console.log('🎵 AudioContext creado con frecuencia de muestreo:', audioContext.sampleRate);
       
       // Convertir el blob a ArrayBuffer
       const arrayBuffer = await webmBlob.arrayBuffer();
+      console.log('📦 Blob convertido a ArrayBuffer:', {
+        tamaño: (arrayBuffer.byteLength / 1024).toFixed(2) + ' KB'
+      });
       
       // Decodificar el audio
+      console.log('🔍 Decodificando audio...');
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      console.log('✅ Audio decodificado:', {
+        duración: audioBuffer.duration.toFixed(2) + ' segundos',
+        canales: audioBuffer.numberOfChannels,
+        frecuencia: audioBuffer.sampleRate + ' Hz'
+      });
       
       // Crear un OfflineAudioContext para la conversión
       const offlineAudioContext = new OfflineAudioContext({
@@ -25,15 +37,22 @@ export async function convertWebmToMp3(webmBlob: Blob): Promise<Blob> {
       source.connect(offlineAudioContext.destination);
       source.start();
       
+      console.log('⚙️ Iniciando renderizado de audio...');
       // Renderizar el audio
       const renderedBuffer = await offlineAudioContext.startRendering();
+      console.log('✨ Audio renderizado correctamente');
       
       // Convertir el buffer a WAV
-      const wavBlob = await convertBufferToWavBlob(renderedBuffer);
+      console.log('📝 Convirtiendo buffer a formato WAV...');
+      const wavBlob = convertBufferToWavBlob(renderedBuffer);
+      console.log('🎉 Conversión a WAV completada:', {
+        tipo: wavBlob.type,
+        tamaño: (wavBlob.size / 1024).toFixed(2) + ' KB'
+      });
       
       resolve(wavBlob);
     } catch (error) {
-      console.error('Error al convertir audio:', error);
+      console.error('❌ Error al convertir audio:', error);
       reject(error);
     }
   });
