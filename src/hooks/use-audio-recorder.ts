@@ -19,16 +19,23 @@ export const useAudioRecorder = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getSupportedMimeType = (): string | null => {
-    const mimeTypes = [
+  const getSupportedMimeType = (): string => {
+    const preferredTypes = [
       'audio/wav',
       'audio/mpeg',
-      'audio/mp4',
       'audio/aac',
       'audio/ogg',
+      'audio/mp4',
     ];
 
-    return mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || null;
+    for (const type of preferredTypes) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        console.log('Formato de audio seleccionado:', type);
+        return type;
+      }
+    }
+
+    throw new Error('No se encontró ningún formato de audio soportado');
   };
 
   const handleStartRecording = async (startSession: () => Promise<boolean>) => {
@@ -36,23 +43,26 @@ export const useAudioRecorder = () => {
       const sessionStarted = await startSession();
       if (!sessionStarted) return;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
       const supportedType = getSupportedMimeType();
-      if (!supportedType) {
-        throw new Error('No se encontró ningún formato de audio soportado');
-      }
-
-      console.log('Formato de audio seleccionado:', supportedType);
+      console.log('Intentando iniciar grabación con formato:', supportedType);
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          channelCount: 1,
+          sampleRate: 44100,
+        } 
+      });
       
       mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: supportedType
+        mimeType: supportedType,
+        audioBitsPerSecond: 128000
       });
       
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
+          console.log('Chunk recibido con tipo:', event.data.type);
           audioChunksRef.current.push(event.data);
         }
       };
@@ -76,8 +86,12 @@ export const useAudioRecorder = () => {
       return new Promise<File>((resolve) => {
         mediaRecorderRef.current!.onstop = async () => {
           const mimeType = mediaRecorderRef.current!.mimeType;
+          console.log('Finalizando grabación con formato:', mimeType);
+          
           const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
           const extension = mimeType.split('/')[1];
+          console.log('Usando extensión:', extension);
+          
           const file = new File([audioBlob], `recording.${extension}`, { type: mimeType });
           resolve(file);
         };
