@@ -18,14 +18,34 @@ export const useAudioRecorder = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getSupportedMimeType = (): string | null => {
+    const mimeTypes = [
+      'audio/wav',
+      'audio/mpeg',
+      'audio/mp4',
+      'audio/aac',
+      'audio/ogg',
+    ];
+
+    return mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || null;
+  };
+
   const handleStartRecording = async (startSession: () => Promise<boolean>) => {
     try {
       const sessionStarted = await startSession();
       if (!sessionStarted) return;
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      const supportedType = getSupportedMimeType();
+      if (!supportedType) {
+        throw new Error('No se encontró ningún formato de audio soportado');
+      }
+
+      console.log('Formato de audio seleccionado:', supportedType);
+      
       mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/wav'
+        mimeType: supportedType
       });
       
       audioChunksRef.current = [];
@@ -36,54 +56,17 @@ export const useAudioRecorder = () => {
         }
       };
 
-      mediaRecorderRef.current.start(1000); // Grabamos en chunks de 1 segundo
+      mediaRecorderRef.current.start(1000);
       setIsRecording(true);
       startProgressAndTime();
 
     } catch (error) {
-      console.error("Error al acceder al micrófono:", error);
-      // Si el formato WAV no es soportado, intentamos con otros formatos aceptados
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mimeTypes = [
-          'audio/mp3',
-          'audio/ogg',
-          'audio/aac',
-          'audio/m4a'
-        ];
-        
-        // Encontrar el primer formato soportado
-        const supportedType = mimeTypes.find(type => 
-          MediaRecorder.isTypeSupported(type)
-        );
-
-        if (!supportedType) {
-          throw new Error('Ningún formato de audio soportado');
-        }
-
-        mediaRecorderRef.current = new MediaRecorder(stream, {
-          mimeType: supportedType
-        });
-        
-        audioChunksRef.current = [];
-        mediaRecorderRef.current.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
-
-        mediaRecorderRef.current.start(1000);
-        setIsRecording(true);
-        startProgressAndTime();
-
-      } catch (fallbackError) {
-        console.error("Error al intentar formatos alternativos:", fallbackError);
-        toast({
-          title: "Error",
-          description: "No se pudo acceder al micrófono ❌",
-          variant: "destructive",
-        });
-      }
+      console.error("Error al iniciar la grabación:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo iniciar la grabación de audio ❌",
+        variant: "destructive",
+      });
     }
   };
 
@@ -119,7 +102,7 @@ export const useAudioRecorder = () => {
         }
         return prev + 1;
       });
-    }, 1200); // Ajustado para que coincida con los 120 segundos totales
+    }, 1200);
 
     timeInterval.current = setInterval(() => {
       setRecordingTime(prev => prev + 1);
@@ -141,3 +124,4 @@ export const useAudioRecorder = () => {
     handleStopRecording,
   };
 };
+
