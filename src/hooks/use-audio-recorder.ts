@@ -25,7 +25,9 @@ export const useAudioRecorder = () => {
       const sessionStarted = await startSession();
       if (!sessionStarted) return;
       
-      console.log('🎙️ Iniciando proceso de grabación...');
+      console.log('🎯 Iniciando proceso de grabación...');
+      console.log('🎤 Solicitando acceso al micrófono...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           channelCount: 1,
@@ -36,9 +38,11 @@ export const useAudioRecorder = () => {
         } 
       });
       
-      console.log('🎤 Stream de audio obtenido:', {
-        tracks: stream.getAudioTracks().length,
-        settings: stream.getAudioTracks()[0].getSettings()
+      console.log('✅ Acceso al micrófono concedido');
+      console.log('🎙️ Configuración del micrófono:', {
+        canales: stream.getAudioTracks()[0].getSettings().channelCount,
+        frecuencia: stream.getAudioTracks()[0].getSettings().sampleRate,
+        reduccionRuido: stream.getAudioTracks()[0].getSettings().noiseSuppression
       });
       
       mediaRecorderRef.current = new MediaRecorder(stream);
@@ -48,15 +52,15 @@ export const useAudioRecorder = () => {
         if (event.data.size > 0) {
           console.log('📦 Chunk de audio recibido:', {
             tipo: event.data.type,
-            tamaño: event.data.size + ' bytes'
+            tamaño: (event.data.size / 1024).toFixed(2) + ' KB'
           });
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorderRef.current.start(1000);
-      console.log('⚡ MediaRecorder iniciado con configuración:', {
-        mimeType: mediaRecorderRef.current.mimeType,
+      console.log('⚡ Grabación iniciada con configuración:', {
+        formato: mediaRecorderRef.current.mimeType,
         estado: mediaRecorderRef.current.state
       });
 
@@ -157,3 +161,4 @@ export const useAudioRecorder = () => {
     handleStopRecording,
   };
 };
+
