@@ -26,23 +26,32 @@ export const startProcessingCountdown = (
       const responseData = await response.json();
       console.log('✅ Respuesta del webhook recibida:', responseData);
       
-      if (responseData && responseData.output) {
-        console.log('🎯 Se encontró contenido HTML en la respuesta');
+      if (responseData) {
+        console.log('🎯 Procesando respuesta del webhook');
         if (processingInterval.current) {
           console.log('⏱️ Limpiando intervalo de procesamiento');
           clearInterval(processingInterval.current);
         }
         setIsProcessing(false);
         
-        // Notificar al usuario que el análisis está listo
+        // Procesar diferentes tipos de respuesta
+        if (responseData.output && typeof responseData.output === 'string' && responseData.output.includes('<!DOCTYPE html>')) {
+          console.log('🎯 Se encontró contenido HTML en la respuesta');
+          setResult(responseData.output);
+        } else if (responseData.analysis) {
+          console.log('📊 Se encontró análisis en la respuesta:', responseData.analysis);
+          setResult(responseData.analysis);
+        } else if (responseData.pdfUrl) {
+          console.log('📄 Se encontró URL de PDF en la respuesta:', responseData.pdfUrl);
+          setResult({ type: 'pdf', url: responseData.pdfUrl });
+        }
+        
         toast({
           title: "¡Análisis completado!",
           description: "Se ha generado el análisis de la llamada",
           variant: "success",
         });
         
-        // Enviamos directamente el HTML contenido en output
-        setResult(responseData.output);
         return true;
       }
       console.log('⏳ No hay resultado todavía, continuando...');
@@ -58,7 +67,6 @@ export const startProcessingCountdown = (
     attempts++;
     console.log(`🔄 Intento ${attempts} de obtener resultado...`);
     
-    // Actualizar tiempo restante
     setProcessingTimeLeft((prev) => {
       if (prev <= 1) {
         console.log('⚠️ Tiempo agotado');
@@ -76,7 +84,6 @@ export const startProcessingCountdown = (
       return prev - 1;
     });
 
-    // Intentar obtener resultado
     const success = await checkResult();
     if (success || attempts >= 120) {
       if (processingInterval.current) {

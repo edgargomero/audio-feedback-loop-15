@@ -1,4 +1,3 @@
-
 import { Card } from "./ui/card";
 import { Tabs } from "./ui/tabs";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
@@ -192,10 +191,21 @@ export const AudioFeedback = () => {
   };
 
   const handleDownloadPDF = () => {
-    toast({
-      title: "Descargando PDF",
-      description: "Iniciando descarga del análisis...",
-    });
+    if (state.analysisResult && typeof state.analysisResult === 'object' && 'url' in state.analysisResult) {
+      const pdfUrl = state.analysisResult.url;
+      console.log('📥 Descargando PDF desde:', pdfUrl);
+      window.open(pdfUrl, '_blank');
+      toast({
+        title: "Descargando PDF",
+        description: "El PDF se abrirá en una nueva pestaña",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "No se encontró la URL del PDF",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
