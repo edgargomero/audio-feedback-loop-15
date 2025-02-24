@@ -24,7 +24,9 @@ export const useAudioRecorder = () => {
       if (!sessionStarted) return;
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: 'audio/wav'
+      });
       
       audioChunksRef.current = [];
 
@@ -40,11 +42,48 @@ export const useAudioRecorder = () => {
 
     } catch (error) {
       console.error("Error al acceder al micrófono:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo acceder al micrófono ❌",
-        variant: "destructive",
-      });
+      // Si el formato WAV no es soportado, intentamos con otros formatos aceptados
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeTypes = [
+          'audio/mp3',
+          'audio/ogg',
+          'audio/aac',
+          'audio/m4a'
+        ];
+        
+        // Encontrar el primer formato soportado
+        const supportedType = mimeTypes.find(type => 
+          MediaRecorder.isTypeSupported(type)
+        );
+
+        if (!supportedType) {
+          throw new Error('Ningún formato de audio soportado');
+        }
+
+        mediaRecorderRef.current = new MediaRecorder(stream, {
+          mimeType: supportedType
+        });
+        
+        audioChunksRef.current = [];
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorderRef.current.start(1000);
+        setIsRecording(true);
+        startProgressAndTime();
+
+      } catch (fallbackError) {
+        console.error("Error al intentar formatos alternativos:", fallbackError);
+        toast({
+          title: "Error",
+          description: "No se pudo acceder al micrófono ❌",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -52,8 +91,10 @@ export const useAudioRecorder = () => {
     if (mediaRecorderRef.current && isRecording) {
       return new Promise<File>((resolve) => {
         mediaRecorderRef.current!.onstop = async () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+          const mimeType = mediaRecorderRef.current!.mimeType;
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+          const extension = mimeType.split('/')[1];
+          const file = new File([audioBlob], `recording.${extension}`, { type: mimeType });
           resolve(file);
         };
         
