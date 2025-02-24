@@ -74,13 +74,16 @@ const getFileExtension = (mimeType: string): string => {
     'audio/webm': 'webm'
   };
 
-  return mimeToExt[mimeType] || 'mp3'; // Por defecto mp3 si no se reconoce el tipo
+  return mimeToExt[mimeType] || 'mp3';
 };
 
 export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean = false): Promise<boolean> => {
   try {
     const webhookUrl = isRecording ? MAKE_RECORDING_WEBHOOK_URL : MAKE_WEBHOOK_URL;
     console.log(`Enviando URL al webhook (${isRecording ? 'grabación' : 'archivo'}):`, audioUrl);
+
+    const conversationId = localStorage.getItem('id_conversation_medio');
+    console.log('ID de conversación a enviar:', conversationId);
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -89,6 +92,7 @@ export const sendToMakeWebhook = async (audioUrl: string, isRecording: boolean =
       },
       body: JSON.stringify({ 
         audioUrl,
+        conversationId,
         source: isRecording ? 'recording' : 'upload'
       }),
     });

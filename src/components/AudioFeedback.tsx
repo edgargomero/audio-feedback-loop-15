@@ -9,6 +9,12 @@ import { useState } from "react";
 import { TabsSection } from "./audio/TabsSection";
 import { ProcessingSection } from "./audio/ProcessingSection";
 import { ResultSection } from "./audio/ResultSection";
+import { useConversation } from "@11labs/react";
+import { setConversationId } from "../utils/conversationState";
+
+interface SessionResponse {
+  conversation_id: string;
+}
 
 export const AudioFeedback = () => {
   const { feedback, setFeedback } = useSalesAnalysis();
@@ -19,6 +25,43 @@ export const AudioFeedback = () => {
     toast
   } = useAudioRecorderState();
   const [evaluationHtml, setEvaluationHtml] = useState<string | null>(null);
+
+  const conversation = useConversation({
+    onMessage: (message) => {
+      console.log("Mensaje recibido:", message);
+    },
+    onError: (error) => {
+      console.error("Error en la conversación:", error);
+      toast({
+        title: "Error",
+        description: "Error de conexión con el agente",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const startRecordingSession = async () => {
+    try {
+      const conversationId = await conversation.startSession({
+        agentId: "0gLnzcbTHPrgMkiYcNFr",
+      });
+      
+      const session: SessionResponse = {
+        conversation_id: conversationId
+      };
+      
+      setConversationId(session.conversation_id);
+      return true;
+    } catch (error) {
+      console.error("Error al iniciar la sesión:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo iniciar la sesión",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
 
   const cancelProcessing = () => {
     if (refs.processingInterval.current) clearInterval(refs.processingInterval.current);
@@ -32,6 +75,9 @@ export const AudioFeedback = () => {
 
   const handleStartRecording = async () => {
     try {
+      const sessionStarted = await startRecordingSession();
+      if (!sessionStarted) return;
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       state.mediaRecorderRef.current = new MediaRecorder(stream);
       state.audioChunksRef.current = [];
@@ -135,6 +181,9 @@ export const AudioFeedback = () => {
 
   const handleFileUpload = async (file: File) => {
     try {
+      const sessionStarted = await startRecordingSession();
+      if (!sessionStarted) return;
+
       setFeedback({
         type: "neutral",
         message: "Subiendo archivo... 📤",
@@ -192,7 +241,6 @@ export const AudioFeedback = () => {
   };
 
   const handleDownloadPDF = () => {
-    // Verificamos primero si analysisResult es null
     if (!state.analysisResult) {
       toast({
         title: "Error",
@@ -202,7 +250,6 @@ export const AudioFeedback = () => {
       return;
     }
 
-    // Asegurarnos de que el resultado es un objeto con la propiedad url
     if (typeof state.analysisResult === 'object' && state.analysisResult !== null) {
       const result = state.analysisResult as { url: string };
       
@@ -255,3 +302,4 @@ export const AudioFeedback = () => {
     </Card>
   );
 };
+
