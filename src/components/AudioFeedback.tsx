@@ -53,6 +53,7 @@ export const AudioFeedback = () => {
           setFeedback({
             type: "neutral",
             message: "Subiendo grabación... 📤",
+            stage: 1
           });
 
           const publicUrl = await uploadToSupabase(audioBlob);
@@ -70,6 +71,7 @@ export const AudioFeedback = () => {
           setFeedback({
             type: "positive",
             message: "Grabación enviada a procesar... ⚙️",
+            stage: 1
           });
 
           startProcessingCountdown(
@@ -85,6 +87,7 @@ export const AudioFeedback = () => {
           setFeedback({
             type: "negative",
             message: "Error al procesar la grabación ❌",
+            stage: 1
           });
           toast({
             title: "Error",
@@ -105,6 +108,7 @@ export const AudioFeedback = () => {
       setFeedback({
         type: "neutral",
         message: "Grabando... 🎤",
+        stage: 1
       });
     } catch (error) {
       console.error("Error al acceder al micrófono:", error);
@@ -134,6 +138,7 @@ export const AudioFeedback = () => {
       setFeedback({
         type: "neutral",
         message: "Subiendo archivo... 📤",
+        stage: 1
       });
       
       const audioBlob = new Blob([file], { type: file.type });
@@ -153,6 +158,7 @@ export const AudioFeedback = () => {
       setFeedback({
         type: "positive",
         message: "Archivo enviado a procesar... ⚙️",
+        stage: 1
       });
       
       startProcessingCountdown(
@@ -175,6 +181,7 @@ export const AudioFeedback = () => {
       setFeedback({
         type: "negative",
         message: "Error en el proceso ❌",
+        stage: 1
       });
       toast({
         title: "Error",
