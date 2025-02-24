@@ -1,17 +1,14 @@
+
 import { Card } from "./ui/card";
-import { UploadButton } from "./audio/UploadButton";
-import { FeedbackDisplay } from "./audio/FeedbackDisplay";
-import { ProcessingCountdown } from "./audio/ProcessingCountdown";
-import { ProgressIndicator } from "./audio/ProgressIndicator";
-import { AnalysisResult } from "./audio/AnalysisResult";
-import { RecordingControls } from "./audio/RecordingControls";
+import { Tabs } from "./ui/tabs";
 import { useSalesAnalysis } from "../hooks/use-sales-analysis";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useAudioRecorderState } from "../hooks/use-audio-recorder-state";
 import { startProgressAndTime, stopProgressAndTime, startProcessingCountdown } from "../utils/progressUtils";
 import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
 import { useState } from "react";
-import { EvaluationDisplay } from "./audio/EvaluationDisplay";
+import { TabsSection } from "./audio/TabsSection";
+import { ProcessingSection } from "./audio/ProcessingSection";
+import { ResultSection } from "./audio/ResultSection";
 
 export const AudioFeedback = () => {
   const { feedback, setFeedback } = useSalesAnalysis();
@@ -53,11 +50,6 @@ export const AudioFeedback = () => {
 
           const audioBlob = new Blob(state.audioChunksRef.current, { type: 'audio/webm' });
           
-          console.log('Audio grabado, preparando para subir:', {
-            tipo: audioBlob.type,
-            tamaño: audioBlob.size
-          });
-          
           setFeedback({
             type: "neutral",
             message: "Subiendo grabación... 📤",
@@ -68,10 +60,7 @@ export const AudioFeedback = () => {
           if (!publicUrl) {
             throw new Error('Error al obtener la URL pública');
           }
-
-          console.log('Audio subido, enviando a Make:', publicUrl);
           
-          // Especificamos que es una grabación
           const webhookSuccess = await sendToMakeWebhook(publicUrl, true);
           
           if (!webhookSuccess) {
@@ -148,21 +137,13 @@ export const AudioFeedback = () => {
       });
       
       const audioBlob = new Blob([file], { type: file.type });
-      console.log('Iniciando subida de archivo:', {
-        nombre: file.name,
-        tipo: file.type,
-        tamaño: file.size
-      });
       
       const publicUrl = await uploadToSupabase(audioBlob);
       
       if (!publicUrl) {
         throw new Error('Error al obtener la URL pública');
       }
-
-      console.log('Archivo subido, enviando a Make:', publicUrl);
       
-      // Especificamos que es una carga de archivo (isRecording = false)
       const webhookSuccess = await sendToMakeWebhook(publicUrl, false);
       
       if (!webhookSuccess) {
@@ -174,16 +155,14 @@ export const AudioFeedback = () => {
         message: "Archivo enviado a procesar... ⚙️",
       });
       
-      // Iniciar el proceso de espera para la evaluación
       startProcessingCountdown(
         setters.setIsProcessing,
         setters.setProcessingTimeLeft,
         refs.processingInterval,
         (result) => {
-          // Aquí asumimos que el resultado es el HTML de la evaluación
           if (typeof result === 'string' && result.includes('<!DOCTYPE html>')) {
             setEvaluationHtml(result);
-            setters.setAnalysisResult(null); // No mostrar el resultado PDF
+            setters.setAnalysisResult(null);
           } else {
             setters.setAnalysisResult(result);
           }
@@ -216,60 +195,30 @@ export const AudioFeedback = () => {
     <Card className="p-6 max-w-3xl mx-auto mt-10 shadow-lg bg-white dark:bg-gray-800">
       <h2 className="text-2xl font-semibold mb-6 text-center">Subir Archivo de Audio</h2>
       <Tabs defaultValue="upload" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="upload">Subir Archivo</TabsTrigger>
-          <TabsTrigger value="record">Grabar Audio</TabsTrigger>
-        </TabsList>
-        <TabsContent value="upload">
-          <UploadButton onFileUpload={handleFileUpload} />
-        </TabsContent>
-        <TabsContent value="record">
-          <RecordingControls 
-            isRecording={state.isRecording}
-            onToggleRecording={state.isRecording ? handleStopRecording : handleStartRecording}
-            progressValue={state.progressValue}
-            recordingTime={state.recordingTime}
-          />
-        </TabsContent>
+        <TabsSection 
+          isRecording={state.isRecording}
+          onToggleRecording={state.isRecording ? handleStopRecording : handleStartRecording}
+          progressValue={state.progressValue}
+          recordingTime={state.recordingTime}
+          onFileUpload={handleFileUpload}
+        />
       </Tabs>
 
       {(state.progressValue > 0 || state.isProcessing) && !state.analysisResult && !evaluationHtml && (
-        <div className="mt-6 space-y-4">
-          {state.progressValue < 100 && (
-            <ProgressIndicator value={state.progressValue} />
-          )}
-          
-          {state.isProcessing && (
-            <ProcessingCountdown 
-              timeLeft={state.processingTimeLeft}
-              onCancel={cancelProcessing}
-            />
-          )}
-        </div>
+        <ProcessingSection 
+          progressValue={state.progressValue}
+          isProcessing={state.isProcessing}
+          processingTimeLeft={state.processingTimeLeft}
+          onCancel={cancelProcessing}
+        />
       )}
 
-      {feedback.message && !evaluationHtml && (
-        <div className="mt-6">
-          <FeedbackDisplay 
-            type={feedback.type}
-            message={feedback.message}
-            stage={feedback.stage}
-          />
-        </div>
-      )}
-
-      {evaluationHtml && (
-        <EvaluationDisplay htmlContent={evaluationHtml} />
-      )}
-
-      {state.analysisResult && !evaluationHtml && (
-        <div className="mt-6">
-          <AnalysisResult
-            filename={state.analysisResult}
-            onDownload={handleDownloadPDF}
-          />
-        </div>
-      )}
+      <ResultSection 
+        feedback={feedback}
+        evaluationHtml={evaluationHtml}
+        analysisResult={state.analysisResult}
+        onDownload={handleDownloadPDF}
+      />
     </Card>
   );
 };
