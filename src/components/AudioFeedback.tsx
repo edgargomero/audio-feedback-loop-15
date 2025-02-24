@@ -202,23 +202,26 @@ export const AudioFeedback = () => {
       return;
     }
 
-    // Ahora podemos hacer la verificación del tipo de objeto y la propiedad url
-    const result = state.analysisResult;
-    if (typeof result === 'object' && result !== null && 'url' in result) {
-      const pdfUrl = result.url;
-      console.log('📥 Descargando PDF desde:', pdfUrl);
-      window.open(pdfUrl, '_blank');
-      toast({
-        title: "Descargando PDF",
-        description: "El PDF se abrirá en una nueva pestaña",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "No se encontró la URL del PDF",
-        variant: "destructive",
-      });
+    // Asegurarnos de que el resultado es un objeto con la propiedad url
+    if (typeof state.analysisResult === 'object' && state.analysisResult !== null) {
+      const result = state.analysisResult as { url: string };
+      
+      if ('url' in result) {
+        console.log('📥 Descargando PDF desde:', result.url);
+        window.open(result.url, '_blank');
+        toast({
+          title: "Descargando PDF",
+          description: "El PDF se abrirá en una nueva pestaña",
+        });
+        return;
+      }
     }
+    
+    toast({
+      title: "Error",
+      description: "No se encontró la URL del PDF",
+      variant: "destructive",
+    });
   };
 
   return (
