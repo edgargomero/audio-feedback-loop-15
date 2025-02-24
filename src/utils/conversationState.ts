@@ -14,3 +14,9 @@ export const getConversationId = () => {
   return conversationId;
 };
 
+export const clearConversationId = () => {
+  conversationId = null;
+  localStorage.removeItem('id_conversation_medio');
+  console.log('Conversation ID cleared');
+};
+

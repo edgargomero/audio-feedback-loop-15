@@ -5,12 +5,12 @@ import { useSalesAnalysis } from "../hooks/use-sales-analysis";
 import { useAudioRecorderState } from "../hooks/use-audio-recorder-state";
 import { startProgressAndTime, stopProgressAndTime, startProcessingCountdown } from "../utils/progressUtils";
 import { uploadToSupabase, sendToMakeWebhook } from "../utils/uploadUtils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TabsSection } from "./audio/TabsSection";
 import { ProcessingSection } from "./audio/ProcessingSection";
 import { ResultSection } from "./audio/ResultSection";
 import { useConversation } from "@11labs/react";
-import { setConversationId } from "../utils/conversationState";
+import { setConversationId, clearConversationId } from "../utils/conversationState";
 
 interface SessionResponse {
   conversation_id: string;
@@ -25,6 +25,8 @@ export const AudioFeedback = () => {
     toast
   } = useAudioRecorderState();
   const [evaluationHtml, setEvaluationHtml] = useState<string | null>(null);
+  const [sessionActive, setSessionActive] = useState(false);
+  const [sessionTimer, setSessionTimer] = useState<NodeJS.Timeout | null>(null);
 
   const conversation = useConversation({
     onMessage: (message) => {
@@ -40,6 +42,15 @@ export const AudioFeedback = () => {
     }
   });
 
+  useEffect(() => {
+    return () => {
+      if (sessionTimer) {
+        clearTimeout(sessionTimer);
+      }
+      clearConversationId();
+    };
+  }, [sessionTimer]);
+
   const startRecordingSession = async () => {
     try {
       const conversationId = await conversation.startSession({
@@ -51,6 +62,22 @@ export const AudioFeedback = () => {
       };
       
       setConversationId(session.conversation_id);
+      setSessionActive(true);
+
+      // Configurar el temporizador de 120 segundos para la sesión
+      const timer = setTimeout(() => {
+        setSessionActive(false);
+        clearConversationId();
+        if (state.isRecording) {
+          handleStopRecording();
+        }
+        toast({
+          title: "Sesión finalizada",
+          description: "La sesión de 120 segundos ha terminado",
+        });
+      }, 120000);
+
+      setSessionTimer(timer);
       return true;
     } catch (error) {
       console.error("Error al iniciar la sesión:", error);
@@ -67,6 +94,12 @@ export const AudioFeedback = () => {
     if (refs.processingInterval.current) clearInterval(refs.processingInterval.current);
     setters.setIsProcessing(false);
     setters.setProgressValue(0);
+    if (sessionTimer) {
+      clearTimeout(sessionTimer);
+      setSessionTimer(null);
+    }
+    clearConversationId();
+    setSessionActive(false);
     toast({
       title: "Procesamiento cancelado",
       description: "Se ha cancelado el procesamiento del audio",
@@ -74,10 +107,13 @@ export const AudioFeedback = () => {
   };
 
   const handleStartRecording = async () => {
-    try {
+    // Si no hay sesión activa, iniciarla primero
+    if (!sessionActive) {
       const sessionStarted = await startRecordingSession();
       if (!sessionStarted) return;
+    }
 
+    try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       state.mediaRecorderRef.current = new MediaRecorder(stream);
       state.audioChunksRef.current = [];
@@ -180,10 +216,13 @@ export const AudioFeedback = () => {
   };
 
   const handleFileUpload = async (file: File) => {
-    try {
+    // Si no hay sesión activa, iniciarla primero
+    if (!sessionActive) {
       const sessionStarted = await startRecordingSession();
       if (!sessionStarted) return;
+    }
 
+    try {
       setFeedback({
         type: "neutral",
         message: "Subiendo archivo... 📤",
