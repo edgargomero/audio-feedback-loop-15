@@ -10,6 +10,7 @@ import { TabsSection } from "./audio/TabsSection";
 import { ProcessingSection } from "./audio/ProcessingSection";
 import { ResultSection } from "./audio/ResultSection";
 import { useRecordingSession } from "../hooks/use-recording-session";
+import { setConversationId } from "../utils/conversationState";
 
 export const AudioFeedback = () => {
   const { feedback, setFeedback } = useSalesAnalysis();
@@ -107,33 +108,6 @@ export const AudioFeedback = () => {
     }
   };
 
-  const cancelProcessing = () => {
-    if (refs.processingInterval.current) clearInterval(refs.processingInterval.current);
-    setters.setIsProcessing(false);
-    setters.setProgressValue(0);
-    toast({
-      title: "Procesamiento cancelado",
-      description: "Se ha cancelado el procesamiento del audio",
-    });
-  };
-
-  const startProcessing = () => {
-    startProcessingCountdown(
-      setters.setIsProcessing,
-      setters.setProcessingTimeLeft,
-      refs.processingInterval,
-      (result) => {
-        if (typeof result === 'string' && result.includes('<!DOCTYPE html>')) {
-          setEvaluationHtml(result);
-          setters.setAnalysisResult(null);
-        } else {
-          setters.setAnalysisResult(result);
-        }
-      },
-      toast
-    );
-  };
-
   const handleFileUpload = async (file: File) => {
     if (!sessionActive) {
       const sessionStarted = await startSession();
@@ -181,6 +155,33 @@ export const AudioFeedback = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const cancelProcessing = () => {
+    if (refs.processingInterval.current) clearInterval(refs.processingInterval.current);
+    setters.setIsProcessing(false);
+    setters.setProgressValue(0);
+    toast({
+      title: "Procesamiento cancelado",
+      description: "Se ha cancelado el procesamiento del audio",
+    });
+  };
+
+  const startProcessing = () => {
+    startProcessingCountdown(
+      setters.setIsProcessing,
+      setters.setProcessingTimeLeft,
+      refs.processingInterval,
+      (result) => {
+        if (typeof result === 'string' && result.includes('<!DOCTYPE html>')) {
+          setEvaluationHtml(result);
+          setters.setAnalysisResult(null);
+        } else {
+          setters.setAnalysisResult(result);
+        }
+      },
+      toast
+    );
   };
 
   const handleDownloadPDF = () => {
